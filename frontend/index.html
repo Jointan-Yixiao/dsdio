@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dsdio</title>
+  <link rel="stylesheet" href="./style.css?v=6" />
+</head>
+<body>
+  <div class="shell" id="shell">
+    <canvas id="fx"></canvas>
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+    <div class="scan"></div>
+
+    <!-- 顶栏 -->
+    <header class="bar">
+      <div class="status pywebview-drag-region">
+        <span class="dot" id="live-dot"></span>
+        <span class="brand" id="brand">DSDIO</span>
+        <span class="onair" id="onair">LATE&nbsp;NIGHT</span>
+      </div>
+      <div class="win">
+        <button id="settings-btn" class="ic" title="Settings">
+          <svg viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" /><line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" /></svg>
+        </button>
+        <button id="btn-top" class="ic active" title="Pin on top">
+          <svg viewBox="0 0 24 24"><path d="M7 9l5-5 5 5" /><line x1="12" y1="4" x2="12" y2="14" /><line x1="5" y1="20" x2="19" y2="20" /></svg>
+        </button>
+        <button id="btn-min" class="ic" title="Minimize">
+          <svg viewBox="0 0 24 24"><line x1="6" y1="12" x2="18" y2="12" /></svg>
+        </button>
+        <button id="btn-close" class="ic danger" title="Close">
+          <svg viewBox="0 0 24 24"><line x1="6.5" y1="6.5" x2="17.5" y2="17.5" /><line x1="17.5" y1="6.5" x2="6.5" y2="17.5" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 正在播放 -->
+    <section class="player" id="player">
+      <div class="np-head">
+        <div class="np-info">
+          <div class="ptitle idle" id="ptitle">NO SIGNAL</div>
+          <div class="partist" id="partist">Ask Dsdio to spin something</div>
+        </div>
+        <button id="m-play" class="mbtn play" title="Play / Pause"></button>
+      </div>
+      <div class="now-extra">
+        <span class="dt" id="dt">— · —</span>
+        <span class="wx" id="wx"></span>
+      </div>
+      <canvas id="viz" class="viz"></canvas>
+      <div class="ptime" id="ptime">0:00 / 0:00</div>
+      <div class="prail" id="prail"><div class="pfill" id="pfill"></div></div>
+    </section>
+
+    <!-- 对话 -->
+    <main class="chat" id="chat"></main>
+
+    <!-- 输入 -->
+    <footer class="compose">
+      <button id="mic" class="ic-btn ghost" title="Voice input">
+        <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><line x1="12" y1="18" x2="12" y2="21" /></svg>
+      </button>
+      <input id="input" type="text" placeholder="Talk to Dsdio…" autocomplete="off" />
+      <button id="send" class="send" title="Send">
+        <svg viewBox="0 0 24 24"><path d="M4 12l16-7-7 16-2.5-6.5z" /></svg>
+      </button>
+    </footer>
+
+    <!-- 迷你停靠条（最小化后贴桌面右缘；右端圆形头像，左侧 律动/进度条/当前台词）-->
+    <section id="mini" class="mini-bar">
+      <div class="mini-stack">
+        <canvas id="mini-viz" class="mini-viz"></canvas>
+        <div id="mini-rail" class="mini-rail"><div id="mini-fill" class="mini-fill"></div></div>
+        <div id="mini-caption" class="mini-caption"></div>
+      </div>
+      <button id="mini-avatar" class="mini-avatar" title="点击展开">
+        <span class="mini-orb"></span>
+        <span class="mini-letter" id="mini-letter">D</span>
+      </button>
+    </section>
+
+    <!-- 设置 -->
+    <section id="settings" class="panel hidden">
+      <canvas id="galaxy"></canvas>
+      <div class="panel-scroll">
+      <div class="panel-head">
+        <span>SETTINGS</span>
+        <button id="settings-close" class="ic" title="Close">
+          <svg viewBox="0 0 24 24"><line x1="6.5" y1="6.5" x2="17.5" y2="17.5" /><line x1="17.5" y1="6.5" x2="6.5" y2="17.5" /></svg>
+        </button>
+      </div>
+      <label class="field">
+        <span class="label">DJ 名称 · 只限英文（留空用 Dsdio）</span>
+        <input id="host-name" type="text" placeholder="Dsdio" maxlength="24" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="label" id="username-label">你的名字 · Dsdio 开机这样称呼你</span>
+        <input id="user-name" type="text" placeholder="例如 Tan" maxlength="24" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="label">DeepSeek API Key</span>
+        <input id="api-key" type="password" placeholder="sk-..." autocomplete="off" />
+      </label>
+      <div class="hint" id="key-hint"></div>
+
+      <label class="field">
+        <span class="label">OpenWeather API Key</span>
+        <input id="weather-key" type="password" placeholder="天气 key" autocomplete="off" />
+      </label>
+      <div class="field">
+        <span class="label">国家码 + 城市（留空则按 IP 定位）</span>
+        <div class="loc-row">
+          <input id="weather-country" type="text" class="loc-country" placeholder="CN" maxlength="3" autocomplete="off" />
+          <input id="weather-city" type="text" class="loc-city" placeholder="Beijing" autocomplete="off" />
+        </div>
+      </div>
+      <div class="hint" id="weather-hint"></div>
+
+      <div class="field">
+        <span class="label">语音引擎 · TTS</span>
+        <div class="seg" id="engine-seg">
+          <button data-engine="edge" type="button">edge · 精确同步</button>
+          <button data-engine="kokoro" type="button">Kokoro · 更自然</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="voice-label">Dsdio's voice</span>
+        <div id="persona-list" class="persona-list"></div>
+      </div>
+      <label class="field range">
+        <span class="label">Speed <b id="rate-val">-2%</b></span>
+        <input id="rate" type="range" min="-30" max="30" step="2" value="-2" />
+      </label>
+      <label class="field range">
+        <span class="label">Music volume <b id="vol-val">85%</b></span>
+        <input id="vol" type="range" min="0" max="100" step="5" value="85" />
+      </label>
+
+      <div class="field">
+        <div class="switch-row">
+          <span class="label">麦克风 · 语音输入</span>
+          <label class="switch"><input type="checkbox" id="mic-toggle" /><span class="track"></span></label>
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="label">语音唤醒词 · 迷你态喊它唤醒 Dsdio（留空关闭）</span>
+        <input id="wake-word" type="text" placeholder="例如 Dsdio / 嗨电台" maxlength="40" autocomplete="off" />
+      </label>
+      <div class="hint">迷你态常驻听这个词，听到后回「I'm here」等你说话；可填中文、逗号分隔多个。</div>
+
+      <div class="field">
+        <span class="label">识别引擎 · 怎么把语音转成文字</span>
+        <div class="seg" id="recengine-seg">
+          <button data-engine="vosk" type="button">本地 Vosk · 中文</button>
+          <button data-engine="online" type="button">在线 · 需VPN</button>
+        </div>
+      </div>
+      <div class="hint" id="recengine-hint">本地 Vosk 离线、免 VPN、专精中文，开箱即用；在线走 Google 最准、可识别英文，但需 VPN。</div>
+
+      <div class="field">
+        <span class="label">语音识别语言 · 麦克风 / 唤醒后听你说</span>
+        <div class="seg" id="reclang-seg">
+          <button data-lang="zh" type="button">中文</button>
+          <button data-lang="en" type="button">English</button>
+        </div>
+      </div>
+      <div class="hint">本地 Vosk 恒为中文；English 仅在「在线」引擎下生效。</div>
+
+      <div class="field">
+        <div class="switch-row">
+          <span class="label">开机自启 · 开机自动运行 Dsdio</span>
+          <label class="switch"><input type="checkbox" id="autostart-toggle" /><span class="track"></span></label>
+        </div>
+      </div>
+
+      <button id="save-settings" class="primary">SAVE</button>
+      </div>
+    </section>
+
+    <div id="status" class="toast hidden"></div>
+    <audio id="voice"></audio>
+    <audio id="music"></audio>
+  </div>
+  <script src="./app.js?v=17"></script>
+</body>
+</html>

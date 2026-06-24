@@ -1,0 +1,4 @@
+# 开发依赖：跑单测用。
+#   .venv\Scripts\python -m pip install -r requirements-dev.txt
+#   .venv\Scripts\python -m pytest
+pytest>=8.0

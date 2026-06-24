@@ -1,0 +1,7 @@
+# 核心依赖：装好这些 app 就能跑（对话 + 在线 edge-tts + 新闻 + 音乐 + 天气）。
+# 语音输入(Vosk) / 本地 Kokoro TTS 是可选项，见 requirements-voice.txt。
+pywebview>=5.1
+feedparser>=6.0.10
+openai>=1.30.0
+edge-tts>=6.1.10
+python-dotenv>=1.0.0

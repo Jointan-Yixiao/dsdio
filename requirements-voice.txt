@@ -1,0 +1,13 @@
+# 可选：语音输入（离线 Vosk·中文识别 + 唤醒监听）与本地 Kokoro TTS。
+# 不装也能用 —— 这些都是按需懒加载，缺了就自动退回「打字 + 在线 edge-tts」。
+# 安装： .venv\Scripts\python -m pip install -r requirements-voice.txt
+requests>=2.31           # 下载 Vosk 模型
+vosk>=0.3.41             # 离线中文语音识别
+sounddevice>=0.5         # 麦克风采集
+webrtcvad-wheels>=2.0.14 # VAD 静音切句（import 名为 webrtcvad）
+soundfile>=0.13          # Kokoro 输出 WAV 编码
+kokoro-onnx>=0.5.0       # 本地 Kokoro TTS（onnx）
+onnxruntime>=1.16        # Kokoro 推理后端
+espeakng-loader>=0.2.4   # Kokoro 音素化所需 espeak-ng
+phonemizer-fork>=3.3.2   # 音素化（import 名为 phonemizer）
+numpy>=1.26              # Kokoro / soundfile 数组处理
