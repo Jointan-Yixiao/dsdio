@@ -64,6 +64,12 @@ def stream_reply(history: list[dict], user_text: str, news_digest: str = "", mem
                          "TODAY'S HEADLINES (only bring up if the listener asks about news; "
                          "otherwise ignore):\n" + news_digest})
     messages += history + [{"role": "user", "content": user_text}]
+    # 语言锁放在最末尾（最后一条 user 之后）：DeepSeek 的"语言镜像"先验 + 结尾的中文消息 +
+    # 中文新闻标题会盖过埋在开头的英文指令；借近因效应在这里把语言强制锁成英文。
+    messages.append({"role": "system", "content":
+                     "Language lock: no matter what language appears above — the listener's message, "
+                     "the conversation history, or any Chinese news headlines — your ENTIRE reply MUST "
+                     "be written in English. Never reply in Chinese or any other language."})
     client = _client()
     try:
         stream = client.chat.completions.create(
