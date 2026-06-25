@@ -6,9 +6,10 @@
 
 - 🎙️ **对话主持**：DeepSeek 流式生成，边说边逐句合成语音、逐词高亮
 - 🎵 **点歌即放**：网易云搜索 + UNM 解锁（免登录），灰色/VIP 也能找回原版地址，由于音源是第三方，不是任何歌曲都有，并且会涉及版权问题，这里仅供个人本地使用
+- 🎚️ **本地遥控**：说/打「下一首 / 上一首 / 暂停 / 继续」直接控制播放（不走 LLM、秒响应），切歌后 Dsdio 还会用 DJ 口吻点评新歌
 - 📰 **聊新闻**：各大媒体 RSS（中新网 + BBC/Guardian/NYT 等），抓取后交给 Dsdio 挑重点闲聊
 - 🌦️ **天气陪伴**（可选）：按当地天气和时段问候、选歌
-- 🎤 **语音交互**（可选）：离线 Vosk 中文识别 + 唤醒词；本地 Kokoro 音色
+- 🎤 **语音交互**（可选）：离线 SenseVoice 识别（中/英/粤、免 VPN）+ 唤醒词；本地 Kokoro 音色
 - 🪟 **玻璃挂件**：亚克力磨砂、可拖动置顶，最小化成桌面右下角迷你停靠条
 
 > ⚠️ **仅支持 Windows 10/11**（依赖 WebView2、Win32 亚克力磨砂、注册表自启等）。
@@ -71,7 +72,7 @@
 
 | 想要的功能 | 怎么做 | 之后在哪开 |
 |---|---|---|
-| 🎤 语音说话 | 双击文件夹里的 **`install-voice.bat`** | 直接点挂件上的麦克风图标即可（无需改设置）|
+| 🎤 语音说话 | 双击 **`install-voice.bat`** 装依赖，再双击 **`get-voice-model.bat`** 拉识别模型（约 229MB）| 直接点挂件上的麦克风图标即可（无需改设置）|
 | 🗣️ 更自然的本地音色 | 双击文件夹里的 **`get-kokoro.bat`**（约 340MB，等几分钟）| ⚙ 设置 → **语音引擎 → 选 Kokoro** |
 | 🌦️ 天气陪伴 | 无需命令 | ⚙ 设置 → **天气**栏，粘上 [OpenWeather](https://openweathermap.org/api) 的免费 key |
 
@@ -92,7 +93,8 @@
 
 - **语音输入 / 本地 Kokoro 音色**：`.venv\Scripts\python -m pip install -r requirements-voice.txt`。
   不装也能用——缺了会自动退回「打字 + 在线 edge-tts」。
-  - Vosk 中文识别模型首次使用时**自动下载**（国内免代理）。
+  - SenseVoice 离线识别模型（中/英/粤，~229MB）首次使用时**自动下载**，也可双击 `get-voice-model.bat` 提前拉好
+    （GitHub 慢的话在 `.env` 设 `SENSEVOICE_MODEL_URL` 换镜像）。
   - Kokoro 本地音色模型一键拉取：`.venv\Scripts\python download_models.py`
     （~340MB，下到 `models/`；GitHub 慢的话在 `.env` 设 `KOKORO_MODEL_URL` / `KOKORO_VOICES_URL` 换镜像）。
     下完后到 ⚙ 设置把语音引擎切到 Kokoro 才生效。不下则继续用在线 edge-tts。
@@ -131,8 +133,9 @@ news-podcast/
 │  ├─ news.py          # RSS 抓取 / 清洗 / 去重 / 过滤 / 缓存自愈重抓
 │  ├─ memory.py        # 用户记忆：长期偏好 + 当日短期（每 10 轮提炼）
 │  ├─ music.py         # 网易云搜索 + 取址 + UNM 解锁（免登录）
+│  ├─ commands.py      # 播放控制命令解析（下一首/暂停等，前端直连不走 LLM）
 │  ├─ tts.py           # edge-tts / Kokoro 语音 + 逐词时间轴
-│  ├─ stt.py           # 本地离线识别（Vosk·中文）+ 唤醒监听
+│  ├─ stt.py           # 本地离线识别（SenseVoice·中/英/粤；Vosk 可选）+ 唤醒监听
 │  ├─ weather.py       # OpenWeather 当前天气（IP / 城市定位）
 │  ├─ autostart.py     # 开机自启（HKCU Run 键）
 │  └─ win_effects.py   # Win11 亚克力磨砂 + 圆角 + 迷你停靠
@@ -140,12 +143,13 @@ news-podcast/
 ├─ tests/              # pytest 单测
 ├─ music-api/          # 本地 Node：NeteaseCloudMusicApi（搜索 / 免费地址）
 ├─ unm-api/            # 本地 Node：UNM 解锁服务
-├─ download_models.py        # 可选：一键拉 Kokoro / Vosk 模型
+├─ download_models.py        # 可选：一键拉 Kokoro / SenseVoice 模型
 ├─ requirements.txt          # 核心依赖
 ├─ requirements-voice.txt    # 可选：语音输入 + Kokoro
 ├─ run.bat                   # 双击启动（首次自动装依赖）
 ├─ install-voice.bat         # 双击：装语音输入功能
 ├─ get-kokoro.bat            # 双击：装并下载本地 Kokoro 音色
+├─ get-voice-model.bat       # 双击：拉 SenseVoice 离线识别模型
 ├─ LICENSE
 └─ .env.example
 ```
