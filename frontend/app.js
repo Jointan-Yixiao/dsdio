@@ -526,6 +526,11 @@ let voiceReady = false;                    // 离线引擎模型是否已就绪
 const SR_CTOR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 // 在线引擎按所选语言走：中文 zh-CN（也能认嵌入的英文词）、English en-US。
 function recogLangs() { return REC_LANG === "en" ? ["en-US"] : ["zh-CN"]; }
+// 识别语言选择只对 online(Google) 引擎有意义；SenseVoice 自动多语言、Vosk 恒中文 → 非 online 时整块隐藏
+function syncRecLangUI() {
+  const show = REC_ENGINE === "online";
+  ["#reclang-field", "#reclang-hint"].forEach((sel) => { const el = $(sel); if (el) el.classList.toggle("hidden", !show); });
+}
 function applyMicState(on) { micEnabled = on; $("#mic").classList.toggle("off", !on); }
 // 出声状态：除了本地 __voicing 标记，离线引擎下还要告诉后端（唤醒监听据此丢弃自己的声音）
 function setVoicing(on) {
@@ -772,6 +777,7 @@ async function loadSettings() {
   document.querySelectorAll("#reclang-seg button").forEach((b) => b.classList.toggle("on", b.dataset.lang === REC_LANG));
   REC_ENGINE = s.recog_engine === "online" ? "online" : "sensevoice";  // 非 online 一律按默认离线引擎
   document.querySelectorAll("#recengine-seg button").forEach((b) => b.classList.toggle("on", b.dataset.engine === REC_ENGINE));
+  syncRecLangUI();
   document.querySelectorAll("#engine-seg button").forEach((b) => b.classList.toggle("on", b.dataset.engine === (s.tts_engine || "edge")));
   const hint = $("#key-hint");
   hint.textContent = st.has_key ? "Configured ✓" : "Not set — paste your key and save";
@@ -870,6 +876,7 @@ function bind() {
     voiceReady = false;
     if (REC_ENGINE === "online") { toast("已切到在线识别（需 VPN，最准）"); }
     else { toast("正在准备本地识别模型…"); prepareVoice().then((ok) => toast(ok ? "本地识别已就绪 ✓" : "模型未就绪，检查网络或重试", !ok)); }
+    syncRecLangUI();
     wake.refresh();
   }));
   $("#btn-min").addEventListener("click", enterMini);
@@ -906,6 +913,7 @@ async function apiReady() {
     applyMicState(st.settings.mic_enabled !== false);
     REC_LANG = st.settings.recog_lang === "en" ? "en" : "zh";
     REC_ENGINE = st.settings.recog_engine === "online" ? "online" : "sensevoice";
+    syncRecLangUI();
     if (REC_ENGINE !== "online") prepareVoice();   // 后台预载离线模型，进迷你即可秒用
     wake.setWords(st.settings.wake_word || "");
     $("#onair").textContent = st.music_up ? "ON AIR" : "LATE NIGHT";
