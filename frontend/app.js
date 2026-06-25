@@ -520,7 +520,7 @@ $("#prail").addEventListener("click", (e) => {
 
 /* ================= Mic (Web Speech) ================= */
 let micRecs = [], recording = false, micEnabled = true;
-let REC_LANG = "zh";                       // zh / en（仅 online 引擎区分；vosk 恒中文）
+let REC_LANG = "zh";                       // zh / en（仅 online 引擎用；SenseVoice 自动多语言、Vosk 恒中文）
 let REC_ENGINE = "sensevoice";             // sensevoice(本地中/英,免VPN) / online(Google,需VPN) / vosk(旧)
 let voiceReady = false;                    // 离线引擎模型是否已就绪
 const SR_CTOR = () => window.SpeechRecognition || window.webkitSpeechRecognition;

@@ -268,7 +268,7 @@ DEFAULT_SETTINGS = {
     "volume": 0.85,          # 音乐音量
     "mic_enabled": True,     # 是否允许麦克风 / 语音输入
     "wake_word": "Dsdio",    # 迷你态语音唤醒词（留空则关闭唤醒监听；可填中文，逗号分隔多个）
-    "recog_lang": "zh",      # 语音识别语言：zh / en / both（仅 online 引擎区分；vosk 恒中文）
+    "recog_lang": "zh",      # 识别语言：zh / en（仅 online 引擎用；SenseVoice 自动多语言、Vosk 恒中文）
     "recog_engine": "sensevoice",  # 离线识别：sensevoice(sherpa-onnx,中/英/粤,免VPN) / vosk(旧,纯中文) / online(Google,需VPN)
     "tts_engine": "edge",    # 语音引擎：edge（在线，逐词精确）/ kokoro（本地，音色更自然）
     "weather_key": "",       # OpenWeather API key（留空则用 .env 的 OPENWEATHER_API_KEY）

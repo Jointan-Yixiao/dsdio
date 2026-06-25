@@ -2,12 +2,12 @@
 
 - Kokoro 本地音色：kokoro-v1.0.onnx (~310MB) + voices-v1.0.bin。不下载也能用——
   默认走在线 edge-tts；想要本地、更自然的音色才需要它。
-- Vosk 中文识别：首次语音时会自动下载，这里顺带预拉一份。
+- SenseVoice 离线识别（~229MB）：首次语音时会自动下载，这里顺带预拉一份（也可双击 get-voice-model.bat）。
 
 用法：
     .venv\\Scripts\\python download_models.py
 
-模型地址可在 .env 用 KOKORO_MODEL_URL / KOKORO_VOICES_URL 覆盖（GitHub releases 在大陆不稳时换镜像）。
+模型地址可在 .env 用 KOKORO_MODEL_URL / KOKORO_VOICES_URL / SENSEVOICE_MODEL_URL 覆盖（GitHub releases 在大陆不稳时换镜像）。
 """
 from __future__ import annotations
 

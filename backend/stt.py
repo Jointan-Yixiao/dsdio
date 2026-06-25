@@ -1,14 +1,15 @@
 """本地/离线语音识别 —— 不走 Google，没 VPN 也能用。
 
-离线引擎只用 **Vosk·专精中文**（本地没 VPN 也查不了外网英文专有名词，无需双语/英文）：
-- vosk：vosk-model-small-cn，轻、省、免 VPN，~2s/句。
-（设置里另有 online = 浏览器 Web Speech，走 Google 需 VPN，前端处理，可识别英文。）
+默认引擎 **sherpa-onnx·SenseVoice**（中/英/粤等多语言、非自回归、无 torch；int8 ~229MB）；
+旧的 **Vosk·专精中文** 保留为可选。引擎按 config.recog_engine 选，transcribe 据此分派。
+（另有 online = 浏览器 Web Speech，走 Google 需 VPN，前端处理。）
 
 麦克风用 sounddevice 采集 16k 单声道，webrtcvad 做静音切句：
 - 唤醒：常驻监听，按段识别，命中唤醒词就回调（并自动暂停，交给前端念问候 + 收指令）；
 - 收指令：listen_once 等你开口（standby）、说话停顿够久（gap）即视为说完，整段转文字返回。
 
-模型按需懒加载；Vosk 模型从 alphacephei 直链下载（国内免 VPN）。
+模型按需懒加载；SenseVoice 从 GitHub releases（可用 SENSEVOICE_MODEL_URL 换镜像）、
+Vosk 从 alphacephei 直链下载。
 """
 from __future__ import annotations
 
