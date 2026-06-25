@@ -284,10 +284,30 @@ function addHostMsg(text, typing = false) {
 }
 let voiceGen = 0, respCtx = null;
 
+// 直接播放控制命令（下一首/上一首/暂停/继续）：发起对话前先问后端，命中就就地操作播放器，
+// 不发给 DeepSeek（零延迟、不耗 API、离线可用）。命中返回 true。
+async function tryPlaybackCommand(text) {
+  let cmd;
+  try { cmd = await api().playback_command(text); }
+  catch (_) { return false; }
+  if (!cmd || !cmd.action) return false;
+  const actions = {
+    next: musicNext, prev: musicPrev,
+    pause: () => musicEl.pause(), resume: () => musicEl.play(),
+  };
+  const fn = actions[cmd.action];
+  if (!fn) return false;
+  addUserMsg(text);                          // 像一次轻量对话显示，但不写进 DeepSeek 历史
+  fn();
+  if (cmd.say) { addHostMsg(cmd.say); speakOnce(cmd.say); }   // Dsdio 用固定英文短语出声确认
+  return true;
+}
+
 async function doSend() {
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
+  if (await tryPlaybackCommand(text)) return;   // 直接命令：就地切歌/暂停，不再发给 DeepSeek
   addUserMsg(text);
   const ph = addHostMsg("", true);
   const gen = ++voiceGen;

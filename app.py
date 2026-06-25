@@ -18,7 +18,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import webview
 
-from backend import autostart, config, host, memory, music, news, stt, tts, weather, win_effects
+from backend import (autostart, commands, config, host, memory, music, news, stt, tts, weather,
+                     win_effects)
 
 WINDOW_TITLE = "Dsdio"
 MINI_W, MINI_H = 330, 116   # 迷你停靠条的逻辑尺寸（贴桌面右缘）
@@ -399,6 +400,12 @@ class Api:
         except music.MusicError as e:
             return {"ok": False, "error": str(e)}
         return {"ok": True, "tracks": tracks}
+
+    def playback_command(self, text: str) -> dict:
+        """前端在发起对话前先问这一句是不是直接的播放控制命令（下一首/上一首/暂停/继续）。
+        命中则返回 {action, say}，前端就地操作播放器、不再发给 DeepSeek；否则 action=None。"""
+        hit = commands.match_playback(text) or {}
+        return {"ok": True, "action": hit.get("action"), "say": hit.get("say", "")}
 
     def preview_voice(self, persona_id: str) -> dict:
         s = config.load_settings()
