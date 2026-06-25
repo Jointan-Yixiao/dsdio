@@ -163,6 +163,21 @@ VOSK_MODELS = {
            "url": "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip"},
 }
 
+# ---- sherpa-onnx · SenseVoice（默认离线引擎，替代 Vosk）----
+# 中/英/粤/日/韩、非自回归、无 torch；int8 量化 ~229MB，解压后含 model.int8.onnx + tokens.txt。
+# 默认从 GitHub releases 拉；大陆不稳时用 .env 的 SENSEVOICE_MODEL_URL 覆盖成镜像（如 ModelScope）。
+SENSEVOICE_DIR = MODELS_DIR / "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"
+_SENSEVOICE_URL_DEFAULT = (
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
+    "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2")
+
+
+def _resolve_sensevoice_url() -> str:
+    return os.getenv("SENSEVOICE_MODEL_URL", "").strip() or _SENSEVOICE_URL_DEFAULT
+
+
+SENSEVOICE_URL = _resolve_sensevoice_url()
+
 # ---- DJ 音色 persona ----
 # en=edge-tts 英文音；kokoro=Kokoro 对应音色。引擎在设置里切。
 # zh 仅在偶发中文播报时用作回退（Dsdio 平时说英文）。
@@ -254,7 +269,7 @@ DEFAULT_SETTINGS = {
     "mic_enabled": True,     # 是否允许麦克风 / 语音输入
     "wake_word": "Dsdio",    # 迷你态语音唤醒词（留空则关闭唤醒监听；可填中文，逗号分隔多个）
     "recog_lang": "zh",      # 语音识别语言：zh / en / both（仅 online 引擎区分；vosk 恒中文）
-    "recog_engine": "vosk",  # 识别引擎：vosk(本地中文,免VPN) / online(Google,需VPN,可英文)
+    "recog_engine": "sensevoice",  # 离线识别：sensevoice(sherpa-onnx,中/英/粤,免VPN) / vosk(旧,纯中文) / online(Google,需VPN)
     "tts_engine": "edge",    # 语音引擎：edge（在线，逐词精确）/ kokoro（本地，音色更自然）
     "weather_key": "",       # OpenWeather API key（留空则用 .env 的 OPENWEATHER_API_KEY）
     "weather_city": "",      # 城市（留空则按 IP 自动定位）

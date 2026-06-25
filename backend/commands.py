@@ -90,3 +90,17 @@ def match_playback(text: str) -> dict | None:
     if not act:
         return None
     return {"action": act, "say": _SAY[act]}
+
+
+# 命令命中后，给 DeepSeek 的人类可读情境（让它在固定短语之后自然补一句 DJ 评论）。
+_ACTION_DESC = {
+    "next": "skipped to the next track",
+    "prev": "went back to the previous track",
+    "pause": "paused the music",
+    "resume": "resumed the music",
+}
+
+
+def followup_action_desc(action: str) -> str:
+    """把 action 转成给 DeepSeek 的人类可读情境；未知 action 返回空串。"""
+    return _ACTION_DESC.get(action, "")

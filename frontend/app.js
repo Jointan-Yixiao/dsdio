@@ -298,8 +298,15 @@ async function tryPlaybackCommand(text) {
   const fn = actions[cmd.action];
   if (!fn) return false;
   addUserMsg(text);                          // 像一次轻量对话显示，但不写进 DeepSeek 历史
-  fn();
-  if (cmd.say) { addHostMsg(cmd.say); speakOnce(cmd.say); }   // Dsdio 用固定英文短语出声确认
+  fn();                                       // 即时切歌/暂停（_play 同步设好 state.cur）
+  if (cmd.say) { addHostMsg(cmd.say); await speakOnce(cmd.say); }   // 念固定短语，等念完
+  // 固定短语之后：让 Dsdio 用 DJ 口吻自然补一句（不重复固定短语；带上刚切到的歌名）
+  const t = state.cur;
+  const nowPlaying = t ? (t.artist ? `${t.name} — ${t.artist}` : (t.name || "")) : "";
+  let fu;
+  try { fu = await api().command_followup(cmd.action, cmd.say || "", nowPlaying); }
+  catch (_) { fu = null; }
+  if (fu && fu.ok && fu.text) { addHostMsg(fu.text); speakOnce(fu.text); }
   return true;
 }
 
@@ -514,7 +521,7 @@ $("#prail").addEventListener("click", (e) => {
 /* ================= Mic (Web Speech) ================= */
 let micRecs = [], recording = false, micEnabled = true;
 let REC_LANG = "zh";                       // zh / en（仅 online 引擎区分；vosk 恒中文）
-let REC_ENGINE = "vosk";                   // vosk(本地中文,免VPN) / online(Google,需VPN,可英文)
+let REC_ENGINE = "sensevoice";             // sensevoice(本地中/英,免VPN) / online(Google,需VPN) / vosk(旧)
 let voiceReady = false;                    // 离线引擎模型是否已就绪
 const SR_CTOR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 // 在线引擎按所选语言走：中文 zh-CN（也能认嵌入的英文词）、English en-US。
@@ -763,7 +770,7 @@ async function loadSettings() {
   $("#wake-word").value = s.wake_word || ""; wake.setWords(s.wake_word || "");
   REC_LANG = s.recog_lang === "en" ? "en" : "zh";   // both/whisper 时代的旧值统一归到中文
   document.querySelectorAll("#reclang-seg button").forEach((b) => b.classList.toggle("on", b.dataset.lang === REC_LANG));
-  REC_ENGINE = s.recog_engine === "online" ? "online" : "vosk";  // whisper 已下线 → vosk
+  REC_ENGINE = s.recog_engine === "online" ? "online" : "sensevoice";  // 非 online 一律按默认离线引擎
   document.querySelectorAll("#recengine-seg button").forEach((b) => b.classList.toggle("on", b.dataset.engine === REC_ENGINE));
   document.querySelectorAll("#engine-seg button").forEach((b) => b.classList.toggle("on", b.dataset.engine === (s.tts_engine || "edge")));
   const hint = $("#key-hint");
@@ -898,7 +905,7 @@ async function apiReady() {
     state.vol = st.settings.volume; musicEl.volume = state.vol;
     applyMicState(st.settings.mic_enabled !== false);
     REC_LANG = st.settings.recog_lang === "en" ? "en" : "zh";
-    REC_ENGINE = st.settings.recog_engine === "online" ? "online" : "vosk";
+    REC_ENGINE = st.settings.recog_engine === "online" ? "online" : "sensevoice";
     if (REC_ENGINE !== "online") prepareVoice();   // 后台预载离线模型，进迷你即可秒用
     wake.setWords(st.settings.wake_word || "");
     $("#onair").textContent = st.music_up ? "ON AIR" : "LATE NIGHT";

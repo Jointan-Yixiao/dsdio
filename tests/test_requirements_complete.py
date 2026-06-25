@@ -11,6 +11,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 IMPORT_TO_PKG = {
     "requests": "requests",
     "vosk": "vosk",
+    "sherpa_onnx": "sherpa-onnx",
     "sounddevice": "sounddevice",
     "webrtcvad": "webrtcvad-wheels",
     "kokoro_onnx": "kokoro-onnx",

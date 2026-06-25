@@ -407,6 +407,16 @@ class Api:
         hit = commands.match_playback(text) or {}
         return {"ok": True, "action": hit.get("action"), "say": hit.get("say", "")}
 
+    def command_followup(self, action: str, say: str, now_playing: str = "") -> dict:
+        """命令命中、固定短语 say 已念之后，让 Dsdio 用 DJ 口吻自然补一句（不重复 say）。
+        只读对话历史作氛围、不写回（命令是即兴操作，不污染上下文）；失败静默降级。"""
+        try:
+            text = host.command_followup(self._history, action, say, now_playing,
+                                         memory.context_blurb())
+        except Exception:  # noqa: BLE001
+            return {"ok": False}
+        return {"ok": True, "text": text}
+
     def preview_voice(self, persona_id: str) -> dict:
         s = config.load_settings()
         try:

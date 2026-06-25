@@ -18,6 +18,7 @@ if errorlevel 1 (
 
 echo.
 echo [OK] 装好了！
-echo     - 语音说话：回到挂件，直接点麦克风图标即可（中文识别模型首次用会自动下载）。
+echo     - 语音说话：回到挂件，直接点麦克风图标即可（SenseVoice 识别模型首次用会自动下载，
+echo       想提前拉好就双击 get-voice-model.bat）。
 echo     - 想要本地 Kokoro 音色：再双击 get-kokoro.bat 下载模型。
 pause

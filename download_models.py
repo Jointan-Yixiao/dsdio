@@ -53,13 +53,14 @@ def main() -> int:
         return 1
     print(f"[OK] Kokoro 就绪（本次下载：{got or '无，已齐全'}）")
 
-    print("[*] 预拉 Vosk 中文识别模型 …")
+    print("[*] 预拉 SenseVoice 离线识别模型（默认引擎，约 229MB）…")
     try:
         from backend import stt
-        stt.ensure_vosk("cn")
-        print("[OK] Vosk 就绪")
+        stt.ensure_sensevoice()
+        print("[OK] SenseVoice 就绪")
     except Exception as e:  # noqa: BLE001
-        print(f"[!] Vosk 预拉失败（不影响——首次语音时会再自动下载）：{e}")
+        print(f"[!] SenseVoice 预拉失败（不影响——首次语音时会再自动下载；"
+              f"GitHub 在大陆不稳时用 .env 的 SENSEVOICE_MODEL_URL 换镜像）：{e}")
     return 0
 
 

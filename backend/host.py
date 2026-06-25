@@ -9,7 +9,13 @@ import re
 
 from openai import OpenAI
 
-from . import config
+from . import commands, config
+
+# 语言锁贴在 messages 末尾（最后一条 user 之后），借近因效应压过 DeepSeek 的"语言镜像"先验
+# + 中文消息 / 新闻标题，把回复强制锁成英文；stream_reply 与 command_followup 共用。
+_LANG_LOCK = ("Language lock: no matter what language appears above — the listener's message, "
+              "the conversation history, or any Chinese news headlines — your ENTIRE reply MUST "
+              "be written in English. Never reply in Chinese or any other language.")
 
 
 def _system() -> str:
@@ -64,12 +70,7 @@ def stream_reply(history: list[dict], user_text: str, news_digest: str = "", mem
                          "TODAY'S HEADLINES (only bring up if the listener asks about news; "
                          "otherwise ignore):\n" + news_digest})
     messages += history + [{"role": "user", "content": user_text}]
-    # 语言锁放在最末尾（最后一条 user 之后）：DeepSeek 的"语言镜像"先验 + 结尾的中文消息 +
-    # 中文新闻标题会盖过埋在开头的英文指令；借近因效应在这里把语言强制锁成英文。
-    messages.append({"role": "system", "content":
-                     "Language lock: no matter what language appears above — the listener's message, "
-                     "the conversation history, or any Chinese news headlines — your ENTIRE reply MUST "
-                     "be written in English. Never reply in Chinese or any other language."})
+    messages.append({"role": "system", "content": _LANG_LOCK})   # 末尾语言锁，见 _LANG_LOCK 注释
     client = _client()
     try:
         stream = client.chat.completions.create(
@@ -85,6 +86,36 @@ def stream_reply(history: list[dict], user_text: str, news_digest: str = "", mem
                 yield delta
     except Exception as e:  # noqa: BLE001
         raise HostError(f"DeepSeek request failed: {e}") from e
+
+
+def command_followup(history: list[dict], action: str, said: str,
+                     now_playing: str = "", memory_ctx: str = "") -> str:
+    """快捷命令（切歌/暂停等）命中、固定短语 said 已脱口之后，让 Dsdio 用 DJ 口吻自然补一句
+    ——不重复 said、不重新打招呼。把刚切到的歌 now_playing 告诉她。返回一两句短文本（非流式）。"""
+    situation = commands.followup_action_desc(action) or "changed the playback"
+    parts = [f'The listener just {situation}. A beat ago you already blurted "{said}".']
+    if now_playing:
+        parts.append(f"Now playing: {now_playing}.")
+    parts.append(
+        "In your on-air DJ voice, add exactly ONE short, fresh line that flows on from what you just "
+        "said — react to the moment or the track. Do NOT repeat what you already said, do NOT greet "
+        "again, no song markers — plain spoken text only.")
+    messages = [{"role": "system", "content": _system()}]
+    if memory_ctx:
+        messages.append({"role": "system", "content":
+                         "WHAT YOU KNOW ABOUT THIS LISTENER (use it naturally):\n" + memory_ctx})
+    messages += list(history or [])
+    messages.append({"role": "user", "content": " ".join(parts)})
+    messages.append({"role": "system", "content": _LANG_LOCK})
+    client = _client()
+    try:
+        resp = client.chat.completions.create(
+            model=config.DEEPSEEK_MODEL, messages=messages,
+            temperature=0.8, max_tokens=120, frequency_penalty=0.4, presence_penalty=0.3,
+        )
+    except Exception as e:  # noqa: BLE001
+        raise HostError(f"DeepSeek request failed: {e}") from e
+    return (resp.choices[0].message.content or "").strip()
 
 
 _PLAY_RE = re.compile(r"\[(PLAY|SONG):\s*(.+?)\]", re.S)

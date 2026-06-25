@@ -38,9 +38,9 @@ def _settings() -> dict:
 
 
 def engine() -> str:
-    """离线引擎名。老配置里的 whisper 已下线，统一归一到 vosk。"""
-    eng = _settings().get("recog_engine", "vosk")
-    return "vosk" if eng == "whisper" else eng
+    """离线引擎名。老配置里的 whisper 已下线，归一到默认离线引擎 sensevoice。"""
+    eng = _settings().get("recog_engine", "sensevoice")
+    return "sensevoice" if eng == "whisper" else eng
 
 
 # ============================ 模型下载（从 alphacephei 直链，免 VPN）============================
@@ -64,9 +64,33 @@ def ensure_vosk(lang_code: str = "cn") -> None:
         z.extractall(config.MODELS_DIR)   # zip 内含顶层目录 = info["dir"]
 
 
+def _fetch_tarbz2(url: str, dest_root) -> None:
+    """下载 tar.bz2 到内存、解压到 dest_root（tar 内含顶层目录 = 模型目录名）。"""
+    import io
+    import tarfile
+    import requests
+    dest_root.mkdir(parents=True, exist_ok=True)
+    with requests.get(url, stream=True, timeout=300, allow_redirects=True) as r:
+        r.raise_for_status()
+        buf = io.BytesIO()
+        for chunk in r.iter_content(chunk_size=1 << 20):
+            buf.write(chunk)
+    buf.seek(0)
+    with tarfile.open(fileobj=buf, mode="r:bz2") as t:
+        t.extractall(dest_root)
+
+
+def ensure_sensevoice(fetch=None) -> None:
+    """缺模型就下载 SenseVoice tar.bz2 解压到 MODELS_DIR；已存在则跳过。fetch 可注入（测试用）。"""
+    if (config.SENSEVOICE_DIR / "model.int8.onnx").exists():
+        return
+    (fetch or _fetch_tarbz2)(config.SENSEVOICE_URL, config.MODELS_DIR)
+
+
 # ============================ 引擎：模型加载 + 转写 ============================
 _lock = threading.Lock()
-_vosk: dict = {}     # lang_code -> vosk.Model
+_vosk: dict = {}        # lang_code -> vosk.Model
+_sensevoice: dict = {}  # "rec" -> sherpa_onnx.OfflineRecognizer（单例）
 
 
 def _load_vosk(lang_code: str = "cn"):
@@ -86,6 +110,8 @@ def is_ready(eng: str | None = None) -> bool:
     eng = eng or engine()
     if eng == "vosk":
         return "cn" in _vosk
+    if eng == "sensevoice":
+        return "rec" in _sensevoice
     return True  # online 不需要本地模型
 
 
@@ -96,6 +122,9 @@ def prepare(eng: str | None = None) -> dict:
         if eng == "vosk":
             ensure_vosk("cn")
             _load_vosk("cn")
+        elif eng == "sensevoice":
+            ensure_sensevoice()
+            _load_sensevoice()
         return {"ok": True, "engine": eng, "ready": True}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "engine": eng, "ready": False, "error": str(e)}
@@ -111,10 +140,41 @@ def _vosk_text(pcm: bytes) -> str:
     return (res.get("text") or "").strip()
 
 
+def _load_sensevoice():
+    """加载 sherpa-onnx SenseVoice OfflineRecognizer（单例）；缺模型抛 FileNotFoundError。"""
+    with _lock:
+        if "rec" not in _sensevoice:
+            import sherpa_onnx
+            model = config.SENSEVOICE_DIR / "model.int8.onnx"
+            tokens = config.SENSEVOICE_DIR / "tokens.txt"
+            if not model.exists():
+                raise FileNotFoundError(f"SenseVoice 模型未下载：{config.SENSEVOICE_DIR}")
+            _sensevoice["rec"] = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+                model=str(model), tokens=str(tokens),
+                num_threads=2, use_itn=True, language="auto", debug=False)
+        return _sensevoice["rec"]
+
+
+def _pcm_to_float(pcm: bytes):
+    """16k int16 PCM bytes → float32 ndarray（[-1,1]，sherpa-onnx 要的入参格式）。"""
+    import numpy as np
+    return np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+
+
+def _sensevoice_text(pcm: bytes) -> str:
+    """用 SenseVoice 把一段 16k int16 PCM 转文字（中/英/粤/日/韩自动识别）。"""
+    rec = _load_sensevoice()
+    s = rec.create_stream()
+    s.accept_waveform(SR, _pcm_to_float(pcm))
+    rec.decode_stream(s)
+    return (s.result.text or "").strip()
+
+
 def transcribe(pcm: bytes, lang: str | None = None) -> str:
-    """把一段 16k int16 PCM 转成文字（离线 Vosk·中文）。lang 仅为兼容旧调用，忽略。"""
+    """把一段 16k int16 PCM 转成文字（默认 sherpa-onnx·SenseVoice；选了 vosk 才走 Vosk）。
+    lang 仅为兼容旧调用，忽略。识别异常一律降级空串（语音是可选项，别炸到主路径）。"""
     try:
-        return _vosk_text(pcm)
+        return _vosk_text(pcm) if engine() == "vosk" else _sensevoice_text(pcm)
     except Exception:  # noqa: BLE001
         return ""
 
