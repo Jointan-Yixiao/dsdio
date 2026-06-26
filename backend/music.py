@@ -16,6 +16,10 @@ from . import config
 # 免登录时用来「随便放点」的关键词（这些类目可免登录播放的比例较高）
 FILLER_KEYWORDS = ["纯音乐", "轻音乐", "钢琴", "白噪音", "民谣", "爵士", "lo-fi 中文"]
 
+# 交互点歌（search_split，chat 路径）给搜索/取址请求的超时上限：比默认 15s 更紧，
+# 把极端慢网络下 chat() 返回的最坏耗时压下来。开机铺垫（search_playable）保持宽松默认。
+INTERACTIVE_TIMEOUT = 8
+
 
 class MusicError(Exception):
     pass
@@ -73,6 +77,7 @@ def unm_match(song_id) -> tuple[str, str]:
 def _attach_urls(songs: list[dict], limit: int) -> list[dict]:
     """给搜索结果取播放地址：网易云有免费地址的直接用，没有的（VIP/灰色）交给 UNM 解锁。
     保持搜索相关性顺序；UNM 解锁并发执行、限量、带超时，避免拖慢。"""
+    songs = [x for x in (songs or []) if x.get("id") is not None]  # 丢掉偶发缺 id 的脏条目
     if not songs:
         return []
     songs = songs[: max(limit * 2, 12)]  # 只考虑前若干条，省得给一长串都去解锁
@@ -120,29 +125,30 @@ def search_playable(keywords: str, limit: int = 10) -> list[dict]:
     return _attach_urls(songs, limit)
 
 
-def _search_raw(keywords: str, limit: int):
+def _search_raw(keywords: str, limit: int, timeout: int = INTERACTIVE_TIMEOUT):
     """搜索 + 批量取网易云免费地址。返回 (songs, url_map)。"""
     if not keywords:
         keywords = random.choice(FILLER_KEYWORDS)
     try:
-        s = _get("/cloudsearch", keywords=keywords, limit=max(limit * 2, 20), type=1)
+        s = _get("/cloudsearch", timeout=timeout, keywords=keywords, limit=max(limit * 2, 20), type=1)
     except Exception as e:
         raise MusicError(f"搜索失败（音乐服务在线吗？）：{e}") from e
-    songs = ((s.get("result") or {}).get("songs") or [])[: max(limit * 2, 12)]
+    songs = [x for x in ((s.get("result") or {}).get("songs") or []) if x.get("id") is not None]
+    songs = songs[: max(limit * 2, 12)]  # 丢掉偶发缺 id 的脏条目，再截前若干条
     if not songs:
         return [], {}
     params = {"id": ",".join(str(x["id"]) for x in songs), "level": "standard"}
     try:
-        u = _get("/song/url/v1", **params)
+        u = _get("/song/url/v1", timeout=timeout, **params)
     except Exception as e:
         raise MusicError(f"取播放地址失败：{e}") from e
     return songs, {d["id"]: d.get("url") for d in u.get("data", [])}
 
 
-def search_split(keywords: str, limit: int = 12):
+def search_split(keywords: str, limit: int = 12, timeout: int = INTERACTIVE_TIMEOUT):
     """快路径：返回 (ready, pending)。ready 保持搜索相关性顺序、立刻可播；只为"头部第一首被锁的歌"
     即时解锁一次以定下 track[0]，其余被锁的歌作为 pending 交后台慢慢解，让点歌近乎秒起。"""
-    songs, url_map = _search_raw(keywords, limit)
+    songs, url_map = _search_raw(keywords, limit, timeout=timeout)
     if not songs:
         return [], []
     ready: list[dict] = []
@@ -161,7 +167,7 @@ def search_split(keywords: str, limit: int = 12):
                 pending.append(x)
         else:
             pending.append(x)
-    if not ready:                              # 一首都没有就多试两首兜底
+    if not ready:                              # 一首都没有：依次试 pending 直到解出一首，保证定下 track[0]
         for x in list(pending):
             url, src = unm_match(x["id"])
             if url:
@@ -187,8 +193,7 @@ def resolve_pending(songs: list[dict], max_n: int = 12):
 
 def something(limit: int = 12) -> list[dict]:
     """随便来点能放的（用于「放点音乐」这类泛请求）。"""
-    random.shuffle(FILLER_KEYWORDS)
-    for kw in FILLER_KEYWORDS:
+    for kw in random.sample(FILLER_KEYWORDS, len(FILLER_KEYWORDS)):  # 取乱序副本，别原地打乱全局
         tracks = search_playable(kw, limit)
         if tracks:
             return tracks

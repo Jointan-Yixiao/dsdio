@@ -371,11 +371,14 @@ window.dsdioQueueAppend = function (gen, tracks) {
   const have = new Set(state.radio.map((t) => t.id));
   const add = tracks.filter((t) => t && !have.has(t.id));
   if (!add.length) return;
-  const wasEmpty = state.radio.length === 0;
+  const startAt = state.radio.length;                    // 刚追加的歌从这个下标开始
   state.radio = state.radio.concat(add);
-  if (wasEmpty && !state.cur && musicEl.paused && !state.oneShot) {  // 极端：首曲当时没就绪 → 补起播
-    if (window.__voicing) state.pendingPlay = true;
-    else { state.pendingPlay = false; playRadio(0); }
+  // 电台空闲（从没起播、或已放/跳到队尾停下 → ri=-1）且没在说话、没插播单曲时，让刚追加进来的歌
+  // 自动续上：修复「氛围歌单首曲恰为死链、好歌随后才解出却不自动续播」的死角。判定空闲用 ri===-1
+  // （队列耗尽）而非 !state.cur——这样用户中途暂停(ri>=0)不会被误唤醒；并从 startAt 起播，不重放已放过的歌。
+  if (state.ri === -1 && musicEl.paused && !state.oneShot) {
+    if (window.__voicing) state.pendingPlay = true;      // 正在说话：交给 afterVoice 念完再起播
+    else { state.pendingPlay = false; playRadio(startAt); }
   }
 };
 
@@ -506,6 +509,10 @@ function updateMusicBtn() {
 musicEl.addEventListener("play", updateMusicBtn);
 musicEl.addEventListener("pause", updateMusicBtn);
 musicEl.addEventListener("ended", musicNext);
+// 播放地址失效（UNM 解锁地址常 403/过期）会触发 error 而非 ended：自动跳下一首，
+// 别让电台静默卡死在一首死链上。只在确有当前曲时跳，避免空 src/暂停态误触发。
+// （autoplay 被拦截走的是 play() 拒绝、不发 error，所以不会误跳好歌。）
+musicEl.addEventListener("error", () => { if (state.cur) musicNext(); });
 musicEl.addEventListener("timeupdate", () => {
   const d = musicEl.duration || 0;
   const pct = d ? `${(musicEl.currentTime / d) * 100}%` : "0";

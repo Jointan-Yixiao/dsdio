@@ -386,21 +386,6 @@ class Api:
             return {"ok": False}
         return {"ok": True, "voice": voice, "words": words}
 
-    # 「随便放点」/ 初始铺垫
-    def play_something(self) -> dict:
-        try:
-            tracks = music.something(limit=14)
-        except music.MusicError as e:
-            return {"ok": False, "error": str(e)}
-        return {"ok": True, "tracks": tracks}
-
-    def music_search(self, query: str) -> dict:
-        try:
-            tracks = music.search_playable(query, limit=14)
-        except music.MusicError as e:
-            return {"ok": False, "error": str(e)}
-        return {"ok": True, "tracks": tracks}
-
     def playback_command(self, text: str) -> dict:
         """前端在发起对话前先问这一句是不是直接的播放控制命令（下一首/上一首/暂停/继续）。
         命中则返回 {action, say}，前端就地操作播放器、不再发给 DeepSeek；否则 action=None。"""
