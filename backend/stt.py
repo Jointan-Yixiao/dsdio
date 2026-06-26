@@ -283,17 +283,20 @@ def wake_start(on_wake) -> None:
 
 
 def _wake_loop() -> None:
-    words = _wake_words()
-    if not words:
-        return
     q: queue.Queue = queue.Queue()
     vad = _vad()
     seg: list[bytes] = []
     sil = 0
     stream = None
+    words: list[str] = []
+    next_reload = 0.0
     try:
         while _wake_run:
-            if _wake_paused:
+            now = time.time()
+            if now >= next_reload:        # 每秒重读唤醒词：改设置无需重启即时生效（不在音频热路径里逐帧读盘）
+                words = _wake_words()
+                next_reload = now + 1.0
+            if _wake_paused or not words:  # 暂停 / 还没配唤醒词：关流空转，别占着麦克风（也别让 _wake_run 与线程状态脱节）
                 if stream is not None:
                     try:
                         stream.stop(); stream.close()

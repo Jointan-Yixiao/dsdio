@@ -108,7 +108,9 @@ def fetch_all(categories: list[str] | None = None, fresh_hours: int | None = Non
     now = time.time()
     if use_cache:
         hit = _cache.get(cache_key)
-        if hit and now < hit[0]:  # hit[0] = 过期时间（次日5点）
+        # 仅复用「未过期且非空」的缓存；空结果（曾全网失败）绝不屏蔽重抓，否则自愈被废、
+        # 新闻会一直空到次日 5 点。hit[1] = (results, failed)，hit[1][0] 即条目列表。
+        if hit and now < hit[0] and hit[1][0]:
             return hit[1]
 
     seen: set[str] = set()

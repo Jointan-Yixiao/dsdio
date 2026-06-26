@@ -46,3 +46,16 @@ def test_refetch_is_deduped_while_in_flight():
     news.cached_items(refresher=lambda: None, spawn=spawn)
     news.cached_items(refresher=lambda: None, spawn=spawn)
     assert len(spawned) == 1    # 第二次调用被去重，不重复起线程
+
+
+def test_cached_empty_does_not_block_refetch(monkeypatch):
+    """全网失败缓存了空结果后，未到过期点也应忽略空缓存重抓——否则自愈被废、新闻空到次日5点。"""
+    monkeypatch.setattr(news, "fetch_feed", lambda feed, fresh: [])
+    first, _ = news.fetch_all()
+    assert first == []                                   # 全失败 → 缓存了空结果（未过期）
+    monkeypatch.setattr(news, "fetch_feed", lambda feed, fresh: [
+        {"title": f"T-{feed['name']}", "summary": "", "link": "", "source": feed["name"],
+         "category": feed["category"], "region": feed["region"], "lang": "en",
+         "published": None, "_ts": 0}])
+    second, _ = news.fetch_all()
+    assert second, "空缓存不应屏蔽重抓——网络恢复后应抓到新条目"

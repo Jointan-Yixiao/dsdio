@@ -179,7 +179,9 @@ def rollover() -> bool:
                 merged = _summarize_into_long(load_long(), s)
                 save_long(merged)
             except Exception:
-                pass  # 没 key / 网络问题：宁可不归并，也不丢当天数据进黑洞
+                # 没 key / 网络问题：保留 stale 短期记忆、不重置（也不落到末尾的 ensure_today），
+                # 下次启动重试归并，绝不把当天数据丢进黑洞。
+                return False
             fresh = dict(_SHORT_DEFAULT)
             fresh["date"] = _today()
             _write(SHORT_FILE, fresh)
