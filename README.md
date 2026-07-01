@@ -141,7 +141,7 @@ news-podcast/
 │  └─ win_effects.py   # Win11 亚克力磨砂 + 圆角 + 迷你停靠
 ├─ frontend/           # 玻璃 UI（index.html / style.css / app.js）
 ├─ tests/              # pytest 单测
-├─ music-api/          # 本地 Node：NeteaseCloudMusicApi（搜索 / 免费地址）
+├─ music-api/          # 本地 Node：NeteaseCloudMusicApi Enhanced（搜索 / 免费地址）
 ├─ unm-api/            # 本地 Node：UNM 解锁服务
 ├─ download_models.py        # 可选：一键拉 Kokoro / SenseVoice 模型
 ├─ requirements.txt          # 核心依赖
@@ -157,7 +157,7 @@ news-podcast/
 ## 许可与免责
 
 - 代码以 **MIT** 许可证开源（见 `LICENSE`）。
-- 本项目调用了第三方服务：[NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi)
+- 本项目调用了第三方服务：[NeteaseCloudMusicApi Enhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)
   和 [UnblockNeteaseMusic](https://github.com/UnblockNeteaseMusic/server)。音乐相关功能**仅供个人学习与
   研究**，请遵守相应平台的服务条款与当地法律，自行承担使用风险。
 - 新闻内容版权归各 RSS 来源所有；DeepSeek / OpenWeather 等 API 按其各自条款使用。

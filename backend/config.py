@@ -52,7 +52,7 @@ def _resolve_model() -> str:
 # 默认 deepseek-v4-flash（快/省）；deepseek-v4-pro 更强。可用 .env 的 DEEPSEEK_MODEL 覆盖。
 DEEPSEEK_MODEL = _resolve_model()
 
-# ---- 网易云音乐 API（Binaryify/NeteaseCloudMusicApi，本地 Node 服务）----
+# ---- 网易云音乐 API（NeteaseCloudMusicApi Enhanced 分支，本地 Node 服务）----
 NCM_PORT = 3000
 NCM_BASE = f"http://localhost:{NCM_PORT}"
 MUSIC_API_DIR = BASE_DIR / "music-api"

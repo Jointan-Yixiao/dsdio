@@ -22,7 +22,7 @@ def test_search_playable_skips_songs_without_id(monkeypatch):
                 {"name": "no-id"},                                  # 脏条目：缺 id
                 {"id": 2, "name": "B", "ar": [{"name": "y"}], "al": {}},
             ]}}
-        if path == "/song/url/v1":
+        if path == "/song/url":
             return {"data": [{"id": 2, "url": "http://free/2"}]}
         return {}
     monkeypatch.setattr(music, "_get", fake_get)
@@ -39,19 +39,19 @@ def test_interactive_search_uses_tighter_timeout_than_startup(monkeypatch):
         seen[path] = timeout
         if path == "/cloudsearch":
             return {"result": {"songs": [{"id": 1, "name": "A", "ar": [{"name": "x"}], "al": {}}]}}
-        if path == "/song/url/v1":
+        if path == "/song/url":
             return {"data": [{"id": 1, "url": "http://free/1"}]}
         return {}
     monkeypatch.setattr(music, "_get", fake_get)
 
     music.search_split("hi", limit=3)                         # 交互路径
     assert seen["/cloudsearch"] < 15
-    assert seen["/song/url/v1"] < 15
+    assert seen["/song/url"] < 15
 
     seen.clear()
     music.search_playable("hi", limit=3)                      # 开机铺垫路径
     assert seen["/cloudsearch"] == 15
-    assert seen["/song/url/v1"] == 15
+    assert seen["/song/url"] == 15
 
 
 def test_search_split_skips_songs_without_id(monkeypatch):
@@ -61,7 +61,7 @@ def test_search_split_skips_songs_without_id(monkeypatch):
                 {"name": "no-id"},                                  # 脏条目：缺 id
                 {"id": 7, "name": "C", "ar": [{"name": "z"}], "al": {}},
             ]}}
-        if path == "/song/url/v1":
+        if path == "/song/url":
             return {"data": [{"id": 7, "url": "http://free/7"}]}
         return {}
     monkeypatch.setattr(music, "_get", fake_get)

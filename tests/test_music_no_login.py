@@ -19,7 +19,7 @@ def test_search_playable_works_without_cookie(monkeypatch):
                 {"id": 1, "name": "A", "ar": [{"name": "x"}], "al": {}},
                 {"id": 2, "name": "B", "ar": [{"name": "y"}], "al": {}},
             ]}}
-        if path == "/song/url/v1":
+        if path == "/song/url":
             assert "cookie" not in params           # 不再带 cookie
             return {"data": [{"id": 1, "url": "http://free/1"}, {"id": 2, "url": None}]}
         return {}

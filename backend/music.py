@@ -1,4 +1,4 @@
-"""网易云音乐客户端：调用本地 NeteaseCloudMusicApi（Node 服务）搜索并取可播放地址。
+"""网易云音乐客户端：调用本地 NeteaseCloudMusicApi Enhanced（Node 服务）搜索并取可播放地址。
 
 灰色/VIP 歌网易云没免费地址时，转交本地 UNM 服务（@unblockneteasemusic/server）从酷我/QQ/
 咪咕/B站/pyncmd 等源找回原版可播放地址 —— 免登录、免风控，等效拿到完整曲库。"""
@@ -81,9 +81,11 @@ def _attach_urls(songs: list[dict], limit: int) -> list[dict]:
     if not songs:
         return []
     songs = songs[: max(limit * 2, 12)]  # 只考虑前若干条，省得给一长串都去解锁
-    params = {"id": ",".join(str(x["id"]) for x in songs), "level": "standard"}
+    # 用 /song/url（weapi，免登录开箱即用），别升级成 /song/url/v1——Enhanced 版的 v1 走
+    # xeapi 反爬签名，要先注册设备密钥否则 404；免登录也拿不到 v1 的无损档，切它得不偿失。
+    params = {"id": ",".join(str(x["id"]) for x in songs)}
     try:
-        u = _get("/song/url/v1", **params)
+        u = _get("/song/url", **params)
     except Exception as e:
         raise MusicError(f"取播放地址失败：{e}") from e
     url_map = {d["id"]: d.get("url") for d in u.get("data", [])}
@@ -137,9 +139,9 @@ def _search_raw(keywords: str, limit: int, timeout: int = INTERACTIVE_TIMEOUT):
     songs = songs[: max(limit * 2, 12)]  # 丢掉偶发缺 id 的脏条目，再截前若干条
     if not songs:
         return [], {}
-    params = {"id": ",".join(str(x["id"]) for x in songs), "level": "standard"}
+    params = {"id": ",".join(str(x["id"]) for x in songs)}
     try:
-        u = _get("/song/url/v1", timeout=timeout, **params)
+        u = _get("/song/url", timeout=timeout, **params)
     except Exception as e:
         raise MusicError(f"取播放地址失败：{e}") from e
     return songs, {d["id"]: d.get("url") for d in u.get("data", [])}
