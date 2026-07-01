@@ -2,7 +2,7 @@
 """网易云音源 adapter：接用户自部署的 NeteaseCloudMusicApi 兼容服务（Enhanced 或 fork）。
 
 只此一处懂网易云路由方言（/cloudsearch, /song/url, /song/url/match）。取址+解锁收口于
-_play_url：免费全曲直用；VIP 试听片段或空地址 → 后端自带 /song/url/match 找回完整地址。
+_is_full/_unlock：免费全曲直用；VIP 试听片段或空地址 → 后端自带 /song/url/match 找回完整地址。
 """
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ class NeteaseProvider:
             u = self._get("/song/url", timeout=timeout, **params)
         except ProviderError as e:
             raise ProviderError(e.code, self.provider_id, f"取址失败：{e}") from e
-        return {d["id"]: d for d in u.get("data", [])}
+        return {d["id"]: d for d in u.get("data", []) if "id" in d}
 
     def search(self, keywords: str, limit: int = 10) -> list[dict]:
         """开机铺垫：宽超时；完整免费直用，试听/空地址并发解锁。"""

@@ -48,3 +48,18 @@ def test_no_spawn_when_already_up(monkeypatch):
     api, spawned = _api(monkeypatch, "http://localhost:3000", up=True, server_exists=True)
     api.start_music_server()
     assert not spawned.get("called")
+
+
+def test_wait_music_ready_skips_when_base_empty(monkeypatch):
+    monkeypatch.setattr(config, "MUSIC_API_BASE", "")
+    monkeypatch.setattr(app_module.time, "sleep", lambda s: (_ for _ in ()).throw(AssertionError("不应 sleep")))
+    api = app_module.Api.__new__(app_module.Api)
+    api._wait_music_ready()          # 未配置音源：立即返回，不等待
+
+
+def test_wait_music_ready_stops_when_up(monkeypatch):
+    monkeypatch.setattr(config, "MUSIC_API_BASE", "http://localhost:3000")
+    monkeypatch.setattr(music, "is_up", lambda timeout=2: True)
+    monkeypatch.setattr(app_module.time, "sleep", lambda s: (_ for _ in ()).throw(AssertionError("已就绪不应 sleep")))
+    api = app_module.Api.__new__(app_module.Api)
+    api._wait_music_ready()          # 首查即就绪：不 sleep

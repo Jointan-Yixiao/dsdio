@@ -79,3 +79,12 @@ def test_search_empty_base_preserves_unavailable_code(monkeypatch):
     with pytest.raises(ProviderError) as ei:
         NeteaseProvider().search("hi", limit=1)
     assert ei.value.code == "UNAVAILABLE"
+
+
+def test_url_rows_tolerates_missing_id_rows(monkeypatch):
+    # 后端返回脏行（缺 id）不应抛 KeyError 穿透错误收敛
+    _mk(monkeypatch,
+        songs=[{"id": 5, "name": "E", "ar": [{"name": "w"}], "al": {}}],
+        url_rows=[{"url": "http://orphan"}, {"id": 5, "url": "http://free/5"}])
+    tracks = NeteaseProvider().search("hi", limit=1)
+    assert tracks[0]["url"] == "http://free/5"

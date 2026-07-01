@@ -177,15 +177,21 @@ class Api:
     def weather(self) -> dict:
         return weather.current()
 
+    def _wait_music_ready(self, tries: int = 12, interval: float = 0.5) -> None:
+        """等本地便利 spawn 的音源起来再铺垫歌单；未配置音源则不等，开场白秒出。"""
+        if not config.MUSIC_API_BASE:
+            return
+        for _ in range(tries):
+            if music.is_up():
+                return
+            time.sleep(interval)
+
     def startup_mix(self, gen: int | None = None) -> dict:
         """开机定制：按时间段 + 天气 + 记忆生成开场白(逐句念) + 歌单，返回曲目列表。"""
         s = config.load_settings()
         win = self._window
         memory.rollover()  # 短期记忆过期则先总结进长期，再开新的一天
-        for _ in range(12):  # 等网易云服务就绪
-            if music.is_up():
-                break
-            time.sleep(0.5)
+        self._wait_music_ready()
 
         h = time.localtime().tm_hour
         part = ("late night" if h < 5 else "early morning" if h < 8 else "morning" if h < 12
