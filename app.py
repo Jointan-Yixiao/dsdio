@@ -492,7 +492,7 @@ class Api:
             pass
         return {"on_top": self._top}
 
-    # ---------- 本地 Node 服务（网易云 API + UNM 解锁）----------
+    # ---------- 本地音源服务（可选便利 spawn，目录不随仓发布）----------
     @staticmethod
     def _node_exe() -> str:
         """解析 node 可执行文件：优先 PATH，回退常见安装路径（pythonw 启动时 PATH 可能不全）。"""

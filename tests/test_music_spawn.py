@@ -1,7 +1,4 @@
 """start_music_server 的可选本地 spawn 决策：只在 baseUrl 指向本机、且本地 music-api/ 存在时才起。"""
-import types
-import pytest
-
 import app as app_module
 from backend import config, music
 
@@ -43,5 +40,11 @@ def test_no_spawn_when_dir_missing(monkeypatch):
 
 def test_no_spawn_when_base_empty(monkeypatch):
     api, spawned = _api(monkeypatch, "", up=False, server_exists=True)
+    api.start_music_server()
+    assert not spawned.get("called")
+
+
+def test_no_spawn_when_already_up(monkeypatch):
+    api, spawned = _api(monkeypatch, "http://localhost:3000", up=True, server_exists=True)
     api.start_music_server()
     assert not spawned.get("called")
