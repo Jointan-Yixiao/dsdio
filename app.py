@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import threading
 import time
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 import webview
@@ -86,7 +87,6 @@ class Api:
         self._window: webview.Window | None = None
         self._history: list[dict] = []
         self._music_proc: subprocess.Popen | None = None
-        self._unm_proc: subprocess.Popen | None = None
         self._top = True
         self._mini = False            # 是否处于迷你停靠态
         self._full_rect: tuple | None = None  # 进入迷你前的窗口矩形（物理像素），用于精确还原
@@ -520,32 +520,26 @@ class Api:
             return None
 
     def start_music_server(self) -> None:
-        # 网易云 API（搜索 / 免费地址）
-        if not music.is_up():
-            self._music_proc = self._spawn_node(config.MUSIC_API_DIR)
-        # UNM 解锁服务（灰色/VIP 歌找回原版）
-        if not self._unm_up():
-            self._unm_proc = self._spawn_node(
-                config.UNM_API_DIR,
-                {"UNM_PORT": str(config.UNM_PORT), "UNM_SOURCES": config.UNM_SOURCES},
-            )
-
-    @staticmethod
-    def _unm_up(timeout: float = 1.5) -> bool:
-        try:
-            import urllib.request
-            urllib.request.urlopen(config.UNM_BASE, timeout=timeout)
-            return True
-        except Exception:
-            return False
+        # 可选便利：仅当 baseUrl 指向本机、且本地存在（gitignore 的）music-api/ 时，帮用户 spawn。
+        # 否则只连不 spawn（远程后端 / 未放本地目录 → 用户自己跑）。
+        base = config.MUSIC_API_BASE
+        if not base or music.is_up():
+            return
+        parts = urllib.parse.urlsplit(base)
+        if parts.hostname not in ("localhost", "127.0.0.1", "::1"):
+            return
+        if not (config.MUSIC_API_DIR / "server.js").exists():
+            return
+        port = parts.port or 3000
+        self._music_proc = self._spawn_node(config.MUSIC_API_DIR, {"NCM_PORT": str(port)})
 
     def _stop_music_server(self) -> None:
-        for proc in (self._music_proc, self._unm_proc):
-            if proc and proc.poll() is None:
-                try:
-                    proc.terminate()
-                except Exception:
-                    pass
+        proc = self._music_proc
+        if proc and proc.poll() is None:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
 
 
 def _hotkey_loop(api: "Api") -> None:

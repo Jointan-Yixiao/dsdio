@@ -54,22 +54,10 @@ DEEPSEEK_MODEL = _resolve_model()
 
 # ---- 音源（用户自部署的 NeteaseCloudMusicApi 兼容服务，运行时注入）----
 MUSIC_API_BASE = os.getenv("MUSIC_API_BASE", "").strip().rstrip("/")  # 空=点歌不可用
-# MUSIC_API_DIR 已在下方定义，作可选本地 spawn 目录（gitignore，不随仓发布）
+MUSIC_API_DIR = BASE_DIR / "music-api"  # 可选本地 spawn 目录（gitignore，不随仓发布）
 
 # 泛请求“随便放点”的关键词（可免登录播放比例较高的类目）
 FILLER_KEYWORDS = ["纯音乐", "轻音乐", "钢琴", "白噪音", "民谣", "爵士", "lo-fi 中文"]
-
-# ---- 网易云音乐 API（NeteaseCloudMusicApi Enhanced 分支，本地 Node 服务）----
-NCM_PORT = 3000
-NCM_BASE = f"http://localhost:{NCM_PORT}"
-MUSIC_API_DIR = BASE_DIR / "music-api"
-
-# ---- UNM 解锁服务（@unblockneteasemusic/server，本地 Node 小服务）----
-# 网易云灰色/VIP 歌没免费地址时，用 UNM 从其它源找回原版可播放地址（免登录、免风控）。
-UNM_PORT = 3001
-UNM_BASE = f"http://localhost:{UNM_PORT}"
-UNM_API_DIR = BASE_DIR / "unm-api"
-UNM_SOURCES = "pyncmd,kuwo,kugou,migu,bilibili"  # 无需 cookie 的源优先
 
 # ---- AI 电台主持 ----
 HOST_NAME = "Dsdio"  # 默认名；用户可在设置里改成自己填的英文名
