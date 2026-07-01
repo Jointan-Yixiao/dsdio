@@ -24,5 +24,9 @@ models/
 # ---- Node 依赖（用 npm install 还原，勿提交）----
 node_modules/
 
+# ---- 音源后端目录（用户自部署，含 NCM/UNM，绝不上仓）----
+music-api/
+unm-api/
+
 # ---- 其它工具留存 ----
 musicdl_outputs/

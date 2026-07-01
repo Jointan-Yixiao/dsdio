@@ -1,25 +1,33 @@
-"""音源换成 Enhanced 分支（@neteasecloudmusicapienhanced/api）。
+"""版权守卫：公开仓不得出现网易云 Node / UNM 的代码物料。
 
-Binaryify 原版 NeteaseCloudMusicApi 早已 archive、停更，改用社区半重构增强分支
-@neteasecloudmusicapienhanced/api（保留 serveNcmApi 与全部路由）。这个守卫防止
-有人误 `npm install NeteaseCloudMusicApi` 把停更的原版装回来。
+音源改为用户自部署 + MUSIC_API_BASE 注入；仓库里任何被 git 跟踪的 package.json
+都不得声明 NeteaseCloudMusicApi / Enhanced / UNM 依赖，music-api/ 与 unm-api/
+目录也不得被跟踪。踩线即红。
 """
 import json
 import pathlib
+import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-MUSIC_API = ROOT / "music-api"
-ENHANCED = "@neteasecloudmusicapienhanced/api"
-BINARYIFY = "NeteaseCloudMusicApi"  # 停更的原版（精确包名，PascalCase）
+BANNED = ("neteasecloudmusicapi", "@neteasecloudmusicapienhanced", "@unblockneteasemusic")
 
 
-def test_package_json_uses_enhanced_not_binaryify():
-    deps = json.loads((MUSIC_API / "package.json").read_text("utf-8")).get("dependencies", {})
-    assert ENHANCED in deps, f"music-api 应依赖 Enhanced 分支 {ENHANCED}"
-    assert BINARYIFY not in deps, f"不应再依赖停更的 Binaryify 原版 {BINARYIFY}"
+def _tracked_files() -> list[str]:
+    out = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True)
+    return out.stdout.splitlines()
 
 
-def test_server_js_requires_enhanced():
-    src = (MUSIC_API / "server.js").read_text("utf-8")
-    assert ENHANCED in src, f"server.js 应 require {ENHANCED}"
-    assert f"require('{BINARYIFY}')" not in src, "server.js 不应再 require 停更的原版"
+def test_no_music_source_dirs_tracked():
+    tracked = _tracked_files()
+    bad = [f for f in tracked if f.startswith("music-api/") or f.startswith("unm-api/")]
+    assert not bad, f"这些音源目录文件不应被 git 跟踪（版权风险）：{bad[:5]}"
+
+
+def test_no_tracked_packagejson_declares_ncm_or_unm():
+    offenders = []
+    for f in _tracked_files():
+        if f.endswith("package.json"):
+            text = (ROOT / f).read_text("utf-8", errors="ignore").lower()
+            if any(b in text for b in BANNED):
+                offenders.append(f)
+    assert not offenders, f"这些被跟踪的 package.json 含 NCM/UNM 依赖，不能上仓：{offenders}"

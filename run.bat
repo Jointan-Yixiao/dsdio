@@ -14,22 +14,6 @@ if not exist .venv (
     ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 )
 
-REM ---- Node 音乐服务依赖（网易云搜索 + UNM 解锁）。装不上不影响聊天 / 新闻 ----
-where node >nul 2>nul
-if errorlevel 1 (
-    echo [!] 未检测到 Node.js —— 音乐功能将不可用（聊天 / 新闻不受影响）。
-    echo     如需音乐，安装 Node.js 18+ 后重跑本脚本： https://nodejs.org/
-) else (
-    if not exist "music-api\node_modules" (
-        echo [*] 安装网易云 API 依赖（仅首次，需联网）...
-        pushd music-api && call npm install && popd
-    )
-    if not exist "unm-api\node_modules" (
-        echo [*] 安装 UNM 解锁依赖（仅首次，需联网）...
-        pushd unm-api && call npm install && popd
-    )
-)
-
 if not exist .env (
     echo [!] 未找到 .env 文件，已从 .env.example 复制一份，请填入 DEEPSEEK_API_KEY 后重新运行。
     copy .env.example .env >nul
