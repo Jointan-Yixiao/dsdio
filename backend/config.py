@@ -52,6 +52,13 @@ def _resolve_model() -> str:
 # 默认 deepseek-v4-flash（快/省）；deepseek-v4-pro 更强。可用 .env 的 DEEPSEEK_MODEL 覆盖。
 DEEPSEEK_MODEL = _resolve_model()
 
+# ---- 音源（用户自部署的 NeteaseCloudMusicApi 兼容服务，运行时注入）----
+MUSIC_API_BASE = os.getenv("MUSIC_API_BASE", "").strip().rstrip("/")  # 空=点歌不可用
+# MUSIC_API_DIR 已在下方定义，作可选本地 spawn 目录（gitignore，不随仓发布）
+
+# 泛请求“随便放点”的关键词（可免登录播放比例较高的类目）
+FILLER_KEYWORDS = ["纯音乐", "轻音乐", "钢琴", "白噪音", "民谣", "爵士", "lo-fi 中文"]
+
 # ---- 网易云音乐 API（NeteaseCloudMusicApi Enhanced 分支，本地 Node 服务）----
 NCM_PORT = 3000
 NCM_BASE = f"http://localhost:{NCM_PORT}"
