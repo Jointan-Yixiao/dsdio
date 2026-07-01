@@ -43,7 +43,10 @@ def search_split(keywords: str, limit: int = 12, timeout: int = 8):
 
 def resolve_pending(songs: list[dict], max_n: int = 12):
     """后台续解 pending（逐首 yield 归一化 track）。"""
-    yield from _p().resolve_pending(songs, max_n)
+    try:
+        yield from _p().resolve_pending(songs, max_n)
+    except ProviderError as e:
+        raise MusicError(str(e)) from e
 
 
 def something(limit: int = 12) -> list[dict]:

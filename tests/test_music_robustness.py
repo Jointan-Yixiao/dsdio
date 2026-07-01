@@ -1,5 +1,7 @@
 """点歌板块健壮性：泛请求不破坏全局状态、脏搜索结果不致命、交互路径超时更紧。"""
+import pytest
 from backend import config, music
+from backend.providers.base import ProviderError
 from backend.providers.netease import NeteaseProvider
 
 
@@ -61,3 +63,12 @@ def test_search_split_skips_songs_without_id(monkeypatch):
     monkeypatch.setattr(NeteaseProvider, "_get", fake_get)
     ready, pending = music.search_split("hi", limit=5)
     assert {t["id"] for t in ready} == {"ncm:7"}
+
+
+def test_resolve_pending_converges_provider_error(monkeypatch):
+    # 门面约束：对外错误统一 MusicError，ProviderError 不得冒泡
+    def boom(self, pending, max_n=12):
+        raise ProviderError("NETWORK", "netease-enhanced", "boom")
+    monkeypatch.setattr(NeteaseProvider, "resolve_pending", boom)
+    with pytest.raises(music.MusicError):
+        list(music.resolve_pending([{"id": 1}]))
