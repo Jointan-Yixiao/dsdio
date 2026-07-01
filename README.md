@@ -110,8 +110,8 @@ MUSIC_API_BASE=http://localhost:3000   # 或你的远程实例地址
 ```
 
 - **本机自建**：把该 Node 服务代码放进本仓的 `music-api/` 目录（已在 `.gitignore`，不随仓库发布）；
-  `MUSIC_API_BASE` 指向 `localhost` 且检测到 `music-api/server.js` 时，启动 `app.py`（或双击 `run.bat`）
-  会自动帮你拉起这个本地服务。
+  `MUSIC_API_BASE` 指向本机（`localhost` / `127.0.0.1`）且检测到 `music-api/server.js` 时，启动 `app.py`
+  （或双击 `run.bat`）会自动帮你拉起这个本地服务。
 - **远程实例**：自己找台机器/容器长期跑该服务，`MUSIC_API_BASE` 填对应地址即可，程序不会帮你 spawn。
 - 不填 `MUSIC_API_BASE` 也能正常聊天 / 听新闻，只是不能点歌。
 - 曲库覆盖有限，或想接其它音源（如聚合 API Meting / go-music-dl、QQ 音乐、YouTube 等），可参考
