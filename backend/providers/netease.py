@@ -73,7 +73,7 @@ class NeteaseProvider:
             s = self._get("/cloudsearch", timeout=timeout,
                           keywords=keywords, limit=max(limit * 2, 20), type=1)
         except ProviderError as e:
-            raise ProviderError("NETWORK", self.provider_id, f"搜索失败：{e}") from e
+            raise ProviderError(e.code, self.provider_id, f"搜索失败：{e}") from e
         songs = [x for x in ((s.get("result") or {}).get("songs") or []) if x.get("id") is not None]
         return songs[: max(limit * 2, 12)]
 
@@ -82,7 +82,7 @@ class NeteaseProvider:
         try:
             u = self._get("/song/url", timeout=timeout, **params)
         except ProviderError as e:
-            raise ProviderError("NETWORK", self.provider_id, f"取址失败：{e}") from e
+            raise ProviderError(e.code, self.provider_id, f"取址失败：{e}") from e
         return {d["id"]: d for d in u.get("data", [])}
 
     def search(self, keywords: str, limit: int = 10) -> list[dict]:

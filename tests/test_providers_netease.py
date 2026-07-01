@@ -70,3 +70,12 @@ def test_search_split_first_locked_unlocked_rest_pending(monkeypatch):
 def test_baseurl_empty_is_down(monkeypatch):
     monkeypatch.setattr(config, "MUSIC_API_BASE", "")
     assert NeteaseProvider().is_up() is False
+
+
+def test_search_empty_base_preserves_unavailable_code(monkeypatch):
+    from backend.providers.base import ProviderError
+    # MUSIC_API_BASE 空 → _get 抛 UNAVAILABLE；search 必须保留该 code，不被降级成 NETWORK
+    monkeypatch.setattr(config, "MUSIC_API_BASE", "")
+    with pytest.raises(ProviderError) as ei:
+        NeteaseProvider().search("hi", limit=1)
+    assert ei.value.code == "UNAVAILABLE"
