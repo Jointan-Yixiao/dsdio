@@ -157,7 +157,7 @@ news-podcast/
 │  ├─ weather.py       # OpenWeather 当前天气（IP / 城市定位）
 │  ├─ autostart.py     # 开机自启（HKCU Run 键）
 │  └─ win_effects.py   # Win11 亚克力磨砂 + 圆角 + 迷你停靠
-├─ frontend/           # 玻璃 UI（index.html / style.css / app.js）
+├─ frontend/           # 深蓝赛博玻璃 UI（纯原生零依赖；fonts/ 内置离线字体）
 ├─ tests/              # pytest 单测
 ├─ download_models.py        # 可选：一键拉 Kokoro / SenseVoice 模型
 ├─ requirements.txt          # 核心依赖
