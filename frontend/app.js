@@ -35,73 +35,229 @@ function applyHostName(name) {
   document.querySelectorAll(".msg.host .who").forEach((w) => { w.textContent = HOST.toUpperCase(); });  // 刷新已有气泡上的名字
 }
 
-/* ================= Particle network (cursor-stretch) ================= */
-function initFX() {
-  const canvas = $("#fx"), shell = $("#shell");
-  if (!canvas || !shell) return;
+/* ================= Ambient (自定义光标 · spotlight · mesh 视差 · 磁吸) =================
+   纯原生、零依赖：dot 即时跟手，ring 缓动滞后；spotlight/mesh 朝鼠标缓动做出"光跟着走"的氛围；
+   带 [data-mag] 的按钮被鼠标轻微吸引(磁吸)。JS 跑起来才隐藏原生光标，避免脚本失败后无光标。*/
+function initAmbient() {
+  const shell = $("#shell"), dot = $("#cur-dot"), ring = $("#cur-ring"), spot = $("#spotlight"), mesh = $("#mesh"), grid = $("#grid");
+  if (!shell) return;
+  document.body.classList.add("cursor-ready");
+  const mags = Array.from(document.querySelectorAll("[data-mag]"));
+  const HOT = "button, a, input, .persona, .prail, .switch, [data-mag]";
+
+  let mx = window.innerWidth / 2, my = window.innerHeight / 2, has = false;
+  let rx = mx, ry = my, sx = mx, sy = my;       // ring / spotlight 的缓动位置
+  let cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  const recenter = () => { const r = shell.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; };
+  recenter(); window.addEventListener("resize", recenter);
+
+  document.addEventListener("mousemove", (e) => { mx = e.clientX; my = e.clientY; has = true; });
+  document.addEventListener("mouseleave", () => { has = false; });
+  document.addEventListener("mouseover", (e) => { if (ring) ring.classList.toggle("hot", !!(e.target.closest && e.target.closest(HOT))); });
+
+  function frame() {
+    if (dot) dot.style.transform = `translate(${mx}px, ${my}px)`;
+    rx += (mx - rx) * 0.18; ry += (my - ry) * 0.18;
+    if (ring) ring.style.transform = `translate(${rx}px, ${ry}px)`;
+    sx += (mx - sx) * 0.08; sy += (my - sy) * 0.08;
+    if (spot) { spot.style.setProperty("--mx", sx + "px"); spot.style.setProperty("--my", sy + "px"); }
+    if (mesh) mesh.style.transform = `translate(${(mx - cx) * 0.018}px, ${(my - cy) * 0.018}px)`;
+    if (grid) grid.style.transform = `translate(${(mx - cx) * -0.008}px, ${(my - cy) * -0.008}px)`;  // 反向小幅 → 视差纵深
+    for (const el of mags) {
+      const r = el.getBoundingClientRect();
+      let ox = 0, oy = 0;
+      if (r.width) {        // 隐藏(迷你态等)时 width=0 → 归零，不吸
+        const dx = mx - (r.left + r.width / 2), dy = my - (r.top + r.height / 2), d = Math.hypot(dx, dy);
+        const R = Number(el.dataset.mag) || 60;
+        if (has && d < R) { const f = (1 - d / R) * 0.4; ox = dx * f; oy = dy * f; }
+      }
+      el.style.setProperty("--mx", ox + "px");   // CSS 据此 translate；:active 再叠 scale
+      el.style.setProperty("--my", oy + "px");
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ================= Aurora (主背景 · 极光流光 + 鼠标引力粒子场) =================
+   纯原生 canvas、零依赖：
+   - 柔光极光丝带（多层噪声正弦带，青→蓝→紫→品红梦幻渐变，缓慢漂移）
+   - 漂浮微粒（视差三层，受鼠标轻引力扰动）
+   - 偶发流星划过
+   - 鼠标处产生一团柔光晕（spotlight 已有，这里再加粒子聚拢的"星尘"感）
+   尊重 prefers-reduced-motion：降帧、关流星、粒子静置。 */
+function initAurora() {
+  const canvas = $("#aurora");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  let w = 0, h = 0, pts = [];
-  const m = { x: 0, y: 0, on: false };
-  const LINK = 112, GR = 190;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w = 0, h = 0, raf = 0, t0 = performance.now();
+
+  // 鼠标位置（屏幕坐标 → 转为 canvas 内坐标）
+  const m = { x: -1e9, y: -1e9, on: false };
+  window.addEventListener("mousemove", (e) => { m.x = e.clientX; m.y = e.clientY; m.on = true; });
+  window.addEventListener("mouseleave", () => { m.on = false; });
+
+  // 极光丝带：每条带 = 一串沿水平方向、按噪声上下波动的发光节点
+  const bands = [];
+  function buildBands() {
+    bands.length = 0;
+    const n = 4;
+    for (let i = 0; i < n; i++) {
+      bands.push({
+        y: h * (0.18 + i * 0.2),           // 基线高度
+        amp: 40 + Math.random() * 60,      // 振幅
+        speed: 0.04 + Math.random() * 0.05,// 漂移速度
+        phase: Math.random() * 6.28,
+        thick: 70 + Math.random() * 70,    // 带宽（柔光厚度）
+        // 梦幻渐变色锚：青/蓝/紫/品红轮转
+        c1: ["#3df0d0", "#4da8ff", "#8b7fff", "#ff6bd6"][i % 4],
+        c2: ["#4da8ff", "#8b7fff", "#c86bff", "#ff8ac0"][i % 4],
+      });
+    }
+  }
+
+  // 漂浮微粒：三层视差
+  const dust = [];
+  function buildDust() {
+    dust.length = 0;
+    const n = reduce ? 40 : Math.round((w * h) / 14000);
+    for (let i = 0; i < n; i++) {
+      const layer = Math.random();
+      dust.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: 0.4 + layer * 1.6,
+        depth: 0.3 + layer * 1.4,
+        vx: (Math.random() - 0.5) * 0.12,
+        vy: -0.04 - Math.random() * 0.14,   // 整体缓慢上浮
+        tw: Math.random() * 6.28, tws: 0.6 + Math.random() * 1.6,
+        hue: Math.random(),
+      });
+    }
+  }
+
+  let meteors = [];
+  function maybeMeteor(t) {
+    if (reduce) return;
+    if (Math.random() < 0.0025) {
+      const ang = Math.PI * (0.12 + Math.random() * 0.18);
+      const sp = 5 + Math.random() * 4;
+      meteors.push({
+        x: Math.random() * w * 0.7, y: -10,
+        vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1,
+      });
+    }
+  }
 
   function resize() {
-    const r = shell.getBoundingClientRect();
-    w = r.width; h = r.height;
-    canvas.width = w * dpr; canvas.height = h * dpr;
-    canvas.style.width = w + "px"; canvas.style.height = h + "px";
+    w = canvas.clientWidth; h = canvas.clientHeight;
+    if (!w || !h) return;
+    canvas.width = Math.max(1, w * dpr); canvas.height = Math.max(1, h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const n = Math.max(30, Math.round((w * h) / 5200));
-    pts = [];
-    for (let i = 0; i < n; i++) {
-      const x = Math.random() * w, y = Math.random() * h;
-      pts.push({ x, y, tx: x, ty: y, vx: (Math.random() - 0.5) * 0.18, vy: (Math.random() - 0.5) * 0.18 });
-    }
+    buildBands(); buildDust();
   }
-  function step() {
+
+  const tint = (hue, a) => {
+    if (hue > 0.7) return `rgba(206,172,255,${a})`;
+    if (hue > 0.45) return `rgba(168,210,255,${a})`;
+    if (hue > 0.2) return `rgba(120,240,220,${a})`;
+    return `rgba(240,245,255,${a})`;
+  };
+
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    if (!w || !h) resize();
+    const tt = (now - t0) / 1000;
     ctx.clearRect(0, 0, w, h);
-    const sp = window.__voicing || state.cur ? 1.5 : 1;
-    for (const p of pts) {
-      p.x += p.vx * sp; p.y += p.vy * sp;
-      if (p.x <= 0 || p.x >= w) p.vx *= -1;
-      if (p.y <= 0 || p.y >= h) p.vy *= -1;
-      p.x = Math.max(0, Math.min(w, p.x)); p.y = Math.max(0, Math.min(h, p.y));
-      let ox = 0, oy = 0;
-      if (m.on) {
-        const dx = m.x - p.x, dy = m.y - p.y, d = Math.hypot(dx, dy);
-        if (d < GR) { const f = Math.pow(1 - d / GR, 2) * 0.42; ox = dx * f; oy = dy * f; }
+
+    // —— 极光丝带 ——
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const b of bands) {
+      const grad = ctx.createLinearGradient(0, b.y - b.thick, 0, b.y + b.thick);
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(0.5, b.c1);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      // 上沿
+      for (let x = 0; x <= w; x += 14) {
+        const k = x / w;
+        const wob = Math.sin(k * 6.0 + b.phase + tt * b.speed * 6) * 0.5
+                  + Math.sin(k * 2.4 + b.phase * 1.7 + tt * b.speed * 3.5) * 0.5;
+        // 鼠标在附近时，丝带被轻轻"吸"向鼠标（梦幻扰动）
+        let pull = 0;
+        if (m.on) {
+          const dx = m.x - x, dy = m.y - b.y;
+          const d = Math.hypot(dx, dy);
+          if (d < 260) pull = (1 - d / 260) * 36 * (dy >= 0 ? 1 : -1) * 0.25;
+        }
+        const y = b.y + wob * b.amp + pull - b.thick * 0.5;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
-      p.tx += ((p.x + ox) - p.tx) * 0.22; p.ty += ((p.y + oy) - p.ty) * 0.22;
+      // 下沿（反向）
+      for (let x = w; x >= 0; x -= 14) {
+        const k = x / w;
+        const wob = Math.sin(k * 6.0 + b.phase + tt * b.speed * 6) * 0.5
+                  + Math.sin(k * 2.4 + b.phase * 1.7 + tt * b.speed * 3.5) * 0.5;
+        const y = b.y + wob * b.amp + b.thick * 0.5;
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.globalAlpha = 0.16;
+      ctx.filter = "blur(14px)";
+      ctx.fill();
     }
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i];
-      for (let j = i + 1; j < pts.length; j++) {
-        const b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy);
-        if (d < LINK) {
-          ctx.strokeStyle = `rgba(67,231,255,${(1 - d / LINK) * 0.26})`;
-          ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(a.tx, a.ty); ctx.lineTo(b.tx, b.ty); ctx.stroke();
+    ctx.restore();
+
+    // —— 漂浮微粒（星尘）——
+    ctx.save();
+    for (const d of dust) {
+      d.x += d.vx; d.y += d.vy;
+      if (d.y < -6) { d.y = h + 6; d.x = Math.random() * w; }
+      if (d.x < -6) d.x = w + 6; else if (d.x > w + 6) d.x = -6;
+      // 鼠标轻引力：粒子被缓慢拉近
+      let px = d.x, py = d.y;
+      if (m.on) {
+        const dx = m.x - d.x, dy = m.y - d.y, dist = Math.hypot(dx, dy);
+        if (dist < 180) {
+          const f = (1 - dist / 180) * 14;
+          px += dx / (dist + 1) * f;
+          py += dy / (dist + 1) * f;
         }
       }
-    }
-    for (const p of pts) {
-      const dm = m.on ? Math.hypot(p.x - m.x, p.y - m.y) : 1e9;
-      if (dm < GR) {
-        ctx.strokeStyle = `rgba(155,242,255,${(1 - dm / GR) * 0.6})`;
-        ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(p.tx, p.ty); ctx.lineTo(m.x, m.y); ctx.stroke();
-      }
-      const near = dm < GR;
-      ctx.beginPath(); ctx.arc(p.tx, p.ty, near ? 2 : 1.5, 0, 6.283);
-      ctx.fillStyle = near ? "rgba(155,242,255,0.95)" : "rgba(67,231,255,0.5)";
-      ctx.shadowColor = "#43e7ff"; ctx.shadowBlur = near ? 8 : 2; ctx.fill();
+      const tw = 0.5 + 0.5 * Math.sin(tt * d.tws + d.tw);
+      const a = (0.18 + 0.6 * tw) * (d.depth / 1.7);
+      ctx.beginPath();
+      ctx.arc(px, py, d.r, 0, 6.283);
+      ctx.fillStyle = tint(d.hue, a);
+      ctx.shadowColor = tint(d.hue, 0.9);
+      ctx.shadowBlur = 6 * (d.depth / 1.5);
+      ctx.fill();
     }
     ctx.shadowBlur = 0;
-    if (m.on) { ctx.beginPath(); ctx.arc(m.x, m.y, 2.5, 0, 6.283); ctx.fillStyle = "rgba(155,242,255,.9)"; ctx.shadowColor = "#43e7ff"; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0; }
-    requestAnimationFrame(step);
+    ctx.restore();
+
+    // —— 流星 ——
+    maybeMeteor(tt);
+    ctx.save();
+    for (const me of meteors) {
+      me.x += me.vx; me.y += me.vy; me.life -= 0.01;
+      const tx = me.x - me.vx * 8, ty = me.y - me.vy * 8;
+      const g = ctx.createLinearGradient(me.x, me.y, tx, ty);
+      g.addColorStop(0, `rgba(200,230,255,${me.life})`);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.strokeStyle = g; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(me.x, me.y); ctx.lineTo(tx, ty); ctx.stroke();
+    }
+    ctx.restore();
+    meteors = meteors.filter((s) => s.life > 0 && s.x < w + 60 && s.y < h + 60);
   }
-  shell.addEventListener("mousemove", (e) => { const r = shell.getBoundingClientRect(); m.x = e.clientX - r.left; m.y = e.clientY - r.top; m.on = true; });
-  shell.addEventListener("mouseleave", () => { m.on = false; });
+
   window.addEventListener("resize", resize);
-  resize(); step();
+  resize();
+  raf = requestAnimationFrame(frame);
 }
 
 /* ================= Galaxy (设置面板 · 深空星辰，可交互) ================= */
@@ -245,8 +401,11 @@ function initViz(sel = "#viz", N = 36) {
       bars[i] += (target - bars[i]) * (target > bars[i] ? 0.55 : 0.12);
       const bh = Math.max(2, bars[i] * h);
       const x = i * (bw + gap), y = h - bh;
-      ctx.fillStyle = `rgba(67,231,255,${0.3 + 0.6 * bars[i]})`;
-      ctx.shadowColor = "#43e7ff"; ctx.shadowBlur = 7 * bars[i];
+      // 蓝→紫 duotone：沿宽度从 #4da8ff 渐变到 #8b7fff
+      const tc = N > 1 ? i / (N - 1) : 0;
+      const cr = Math.round(77 + (139 - 77) * tc), cg = Math.round(168 + (127 - 168) * tc);
+      ctx.fillStyle = `rgba(${cr},${cg},255,${0.28 + 0.62 * bars[i]})`;
+      ctx.shadowColor = `rgb(${cr},${cg},255)`; ctx.shadowBlur = 7 * bars[i];
       ctx.fillRect(x, y, Math.max(1, bw), bh);
     }
     ctx.shadowBlur = 0;
@@ -477,6 +636,10 @@ function _play(t) {
   title.textContent = t.name || "—";
   title.classList.remove("idle");
   $("#partist").textContent = t.artist || "";
+  // 切歌：进度即时归零 + 卡片光线横扫一次
+  $("#pfill").style.width = "0%";
+  const mf = $("#mini-fill"); if (mf) mf.style.width = "0%";
+  const pl = $("#player"); if (pl) { pl.classList.remove("swept"); void pl.offsetWidth; pl.classList.add("swept"); }
   musicEl.src = t.url;
   musicEl.volume = window.__voicing ? state.vol * 0.2 : state.vol;
   musicEl.play().catch(() => {});
@@ -502,17 +665,30 @@ function toggleMusic() {
   if (state.radio.length) { playRadio(0); return; }
   toast(`Ask ${HOST} to put something on 🎵`);
 }
+// 播放按钮点击光波：::after 一次性动画，移除→强制回流→加回以重放
+function pulsePlay() { const b = $("#m-play"); if (!b) return; b.classList.remove("rip"); void b.offsetWidth; b.classList.add("rip"); }
+let _wasPlaying = false;
 function updateMusicBtn() {
-  $("#m-play").innerHTML = (!musicEl.paused && state.cur) ? M_PAUSE : M_PLAY;
+  const playing = !musicEl.paused && !!state.cur;
+  const b = $("#m-play");
+  b.innerHTML = playing ? M_PAUSE : M_PLAY;
+  b.classList.toggle("playing", playing);            // 呼吸光环
+  document.body.classList.toggle("is-playing", playing);  // 背景随状态变化
+  if (playing && !_wasPlaying) pulsePlay();           // 起播一刻：光波扩散
+  _wasPlaying = playing;
   refreshMiniLive();
 }
 musicEl.addEventListener("play", updateMusicBtn);
-musicEl.addEventListener("pause", updateMusicBtn);
+musicEl.addEventListener("pause", () => { updateMusicBtn(); $("#m-play").classList.remove("loading"); });
 musicEl.addEventListener("ended", musicNext);
+// 加载/缓冲态：播放按钮外圈转成环形进度
+musicEl.addEventListener("waiting", () => { if (state.cur) $("#m-play").classList.add("loading"); });
+musicEl.addEventListener("playing", () => $("#m-play").classList.remove("loading"));
+musicEl.addEventListener("canplay", () => $("#m-play").classList.remove("loading"));
 // 播放地址失效（UNM 解锁地址常 403/过期）会触发 error 而非 ended：自动跳下一首，
 // 别让电台静默卡死在一首死链上。只在确有当前曲时跳，避免空 src/暂停态误触发。
 // （autoplay 被拦截走的是 play() 拒绝、不发 error，所以不会误跳好歌。）
-musicEl.addEventListener("error", () => { if (state.cur) musicNext(); });
+musicEl.addEventListener("error", () => { $("#m-play").classList.remove("loading"); if (state.cur) musicNext(); });
 musicEl.addEventListener("timeupdate", () => {
   const d = musicEl.duration || 0;
   const pct = d ? `${(musicEl.currentTime / d) * 100}%` : "0";
@@ -524,6 +700,16 @@ $("#prail").addEventListener("click", (e) => {
   const r = $("#prail").getBoundingClientRect();
   if (musicEl.duration) musicEl.currentTime = ((e.clientX - r.left) / r.width) * musicEl.duration;
 });
+// 悬停显示该位置的时间浮层
+$("#prail").addEventListener("mousemove", (e) => {
+  const tip = $("#ptip"); if (!tip || !musicEl.duration) return;
+  const r = $("#prail").getBoundingClientRect();
+  const p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  tip.textContent = fmt(p * musicEl.duration);
+  tip.style.left = (p * 100) + "%";
+  tip.classList.remove("hidden");
+});
+$("#prail").addEventListener("mouseleave", () => { const tip = $("#ptip"); if (tip) tip.classList.add("hidden"); });
 
 /* ================= Mic (Web Speech) ================= */
 let micRecs = [], recording = false, micEnabled = true;
@@ -924,6 +1110,7 @@ async function apiReady() {
     if (REC_ENGINE !== "online") prepareVoice();   // 后台预载离线模型，进迷你即可秒用
     wake.setWords(st.settings.wake_word || "");
     $("#onair").textContent = st.music_up ? "ON AIR" : "LATE NIGHT";
+    $("#onair").classList.toggle("night", !st.music_up);   // 晚间=珊瑚橙暖调，直播=中性
     if (!st.has_key) toast("First run — add your DeepSeek API key in Settings", true);
     loadWeather();
     setInterval(loadWeather, 15 * 60 * 1000);
@@ -946,7 +1133,8 @@ async function loadWeather() {
 
 updateMusicBtn();
 bind();
-initFX();
+initAmbient();
+initAurora();
 initViz("#viz", 36);
 initViz("#mini-viz", 22);   // 迷你停靠条里的律动
 renderClock();

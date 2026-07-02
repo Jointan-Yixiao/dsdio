@@ -4,33 +4,39 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dsdio</title>
-  <link rel="stylesheet" href="./style.css?v=6" />
+  <link rel="stylesheet" href="./style.css?v=11" />
 </head>
 <body>
   <div class="shell" id="shell">
-    <canvas id="fx"></canvas>
+    <!-- ambient: aurora 流光 canvas → 跟随鼠标缓动的极光 mesh → 赛博透视 grid → 噪点 → spotlight -->
+    <canvas id="aurora" class="aurora"></canvas>
+    <div id="mesh" class="mesh"><span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b4"></span></div>
+    <div id="grid" class="grid"></div>
+    <div class="grain"></div>
+    <div id="spotlight" class="spotlight"></div>
+    <div class="vignette"></div>
+    <div class="scanline"></div>
     <span class="corner tl"></span><span class="corner tr"></span>
     <span class="corner bl"></span><span class="corner br"></span>
-    <div class="scan"></div>
 
     <!-- 顶栏 -->
     <header class="bar">
       <div class="status pywebview-drag-region">
         <span class="dot" id="live-dot"></span>
         <span class="brand" id="brand">DSDIO</span>
-        <span class="onair" id="onair">LATE&nbsp;NIGHT</span>
+        <span class="onair night" id="onair">LATE&nbsp;NIGHT</span>
       </div>
       <div class="win">
-        <button id="settings-btn" class="ic" title="Settings">
+        <button id="settings-btn" class="ic" data-mag="46" title="Settings">
           <svg viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8" /><circle cx="9" cy="8" r="2.3" /><line x1="4" y1="16" x2="20" y2="16" /><circle cx="15" cy="16" r="2.3" /></svg>
         </button>
-        <button id="btn-top" class="ic active" title="Pin on top">
+        <button id="btn-top" class="ic active" data-mag="46" title="Pin on top">
           <svg viewBox="0 0 24 24"><path d="M7 9l5-5 5 5" /><line x1="12" y1="4" x2="12" y2="14" /><line x1="5" y1="20" x2="19" y2="20" /></svg>
         </button>
-        <button id="btn-min" class="ic" title="Minimize">
+        <button id="btn-min" class="ic" data-mag="46" title="Minimize">
           <svg viewBox="0 0 24 24"><line x1="6" y1="12" x2="18" y2="12" /></svg>
         </button>
-        <button id="btn-close" class="ic danger" title="Close">
+        <button id="btn-close" class="ic danger" data-mag="46" title="Close">
           <svg viewBox="0 0 24 24"><line x1="6.5" y1="6.5" x2="17.5" y2="17.5" /><line x1="17.5" y1="6.5" x2="6.5" y2="17.5" /></svg>
         </button>
       </div>
@@ -43,7 +49,7 @@
           <div class="ptitle idle" id="ptitle">NO SIGNAL</div>
           <div class="partist" id="partist">Ask Dsdio to spin something</div>
         </div>
-        <button id="m-play" class="mbtn play" title="Play / Pause"></button>
+        <button id="m-play" class="mbtn play" data-mag="60" title="Play / Pause"></button>
       </div>
       <div class="now-extra">
         <span class="dt" id="dt">— · —</span>
@@ -51,7 +57,7 @@
       </div>
       <canvas id="viz" class="viz"></canvas>
       <div class="ptime" id="ptime">0:00 / 0:00</div>
-      <div class="prail" id="prail"><div class="pfill" id="pfill"></div></div>
+      <div class="prail" id="prail"><div class="pfill" id="pfill"></div><div class="ptip hidden" id="ptip"></div></div>
     </section>
 
     <!-- 对话 -->
@@ -59,11 +65,11 @@
 
     <!-- 输入 -->
     <footer class="compose">
-      <button id="mic" class="ic-btn ghost" title="Voice input">
+      <button id="mic" class="ic-btn ghost" data-mag="54" title="Voice input">
         <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><line x1="12" y1="18" x2="12" y2="21" /></svg>
       </button>
       <input id="input" type="text" placeholder="Talk to Dsdio…" autocomplete="off" />
-      <button id="send" class="send" title="Send">
+      <button id="send" class="send" data-mag="56" title="Send">
         <svg viewBox="0 0 24 24"><path d="M4 12l16-7-7 16-2.5-6.5z" /></svg>
       </button>
     </footer>
@@ -75,7 +81,7 @@
         <div id="mini-rail" class="mini-rail"><div id="mini-fill" class="mini-fill"></div></div>
         <div id="mini-caption" class="mini-caption"></div>
       </div>
-      <button id="mini-avatar" class="mini-avatar" title="点击展开">
+      <button id="mini-avatar" class="mini-avatar" data-mag="64" title="点击展开">
         <span class="mini-orb"></span>
         <span class="mini-letter" id="mini-letter">D</span>
       </button>
@@ -179,14 +185,17 @@
         </div>
       </div>
 
-      <button id="save-settings" class="primary">SAVE</button>
+      <button id="save-settings" class="primary" data-mag="40">SAVE</button>
       </div>
     </section>
 
     <div id="status" class="toast hidden"></div>
     <audio id="voice"></audio>
     <audio id="music"></audio>
+
+    <!-- 自定义光标：dot 即时 + ring 缓动跟随 -->
+    <span id="cur-ring"></span><span id="cur-dot"></span>
   </div>
-  <script src="./app.js?v=17"></script>
+  <script src="./app.js?v=22"></script>
 </body>
 </html>
